@@ -1,21 +1,19 @@
 #!/usr/bin/python
-# This is a simple port-forward / proxy, written using only the default python
-# library. If you want to make a suggestion or fix something you can contact-me
-# at voorloop_at_gmail.com
-# Distributed over IDC(I Don't Care) license
+# port-forward-proxy
 import socket
 import select
 import time
 import sys
 
-# Changing the buffer_size and delay, you can improve the speed and bandwidth.
-# But when buffer get to high or delay go too down, you can broke things
+
 buffer_size = 4096
 delay = 0.0001
 forward_to = ('91.142.218.33', 80)
+ports = [6634, 6635, 6636]
+target_port = 6633
+servers = []
 
-# The Forward class is the one responsible for establishing a connection between
-# the proxy and the remote server(original target).
+
 class Forward:
     def __init__(self):
         self.forward = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -32,28 +30,33 @@ class TheServer:
     input_list = []
     channel = {}
 
-    def __init__(self, host, port):
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server.bind((host, port))
-        self.server.listen(200)
+    def __init__(self):
+        for p in ports:
+            ds = ('', p)
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(ds)
+            server.listen(200)
+            servers.append(server)
 
-# The input_list stores all the avaiable sockets that will be managed by
-# select.select, the first one to be appended is the server socket itself, each
-# new connection to this socket will trigger the on_accept() method.
-# If the current socket inputready (returned by select) is not a new connection,
-# it will be considered as incoming data(maybe from server, maybe from client),
-# if the data lenght is 0 it's a close request, otherwise the packet should be
-# forwarded to the correct endpoint.
+
+
     def main_loop(self):
-        self.input_list.append(self.server)
+        #self.input_list.append(self.server)
         while 1:
             time.sleep(delay)
             ss = select.select
-            inputready, outputready, exceptready = ss(self.input_list, [], [])
+            inputready, outputready, exceptready = ss(servers, [], [])
             for self.s in inputready:
-                if self.s == self.server:
-                    self.on_accept()
+
+                if self.s == servers[0]:
+                    self.on_accept(0)
+                    break
+                if self.s == servers[1]:
+                    self.on_accept(1)
+                    break
+                if self.s == servers[2]:
+                    self.on_accept(2)
                     break
 
                 self.data = self.s.recv(buffer_size)
@@ -68,9 +71,9 @@ class TheServer:
 # (client->proxy). Both sockets are stored in input_list, to be then handled
 # by main_loop. A "channel" dictionary is used to associate the
 # endpoints(client<=>server).
-    def on_accept(self):
+    def on_accept(self, port):
         forward = Forward().start(forward_to[0], forward_to[1])
-        clientsock, clientaddr = self.server.accept()
+        clientsock, clientaddr = servers[port].accept()
         if forward:
             print clientaddr, "has connected"
             self.input_list.append(clientsock)
@@ -103,11 +106,22 @@ class TheServer:
     def on_recv(self):
         data = self.data
         # here we can parse and/or modify the data before send forward
-        print data
+        #print data
         self.channel[self.s].send(data)
 
+
+
+
 if __name__ == '__main__':
-        server = TheServer('', 9090)
+        print "\n\n\n\n\n"
+        print "----------------------------------------------------------------"
+        print "--------------------  PORT-FORWARDING PROXY  -------------------"
+        print "----------------------------------------------------------------"
+        print "Listeing on " + str(ports) + " ports"
+        print "Forwarding to " + str(target_port) + " port"
+        print "----------------------------------------------------------------\n"
+
+        server = TheServer()
         try:
             server.main_loop()
         except KeyboardInterrupt:
