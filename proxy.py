@@ -8,7 +8,7 @@ import sys
 
 buffer_size = 4096
 delay = 0.0001
-forward_to = ('91.142.218.33', 80)
+forward_to = ('localhost', 6633)
 ports = [6634, 6635, 6636]
 target_port = 6633
 servers = []
@@ -39,8 +39,6 @@ class TheServer:
             server.listen(200)
             servers.append(server)
 
-
-
     def main_loop(self):
         #self.input_list.append(self.server)
         while 1:
@@ -48,7 +46,6 @@ class TheServer:
             ss = select.select
             inputready, outputready, exceptready = ss(servers, [], [])
             for self.s in inputready:
-
                 if self.s == servers[0]:
                     self.on_accept(0)
                     break
@@ -58,7 +55,6 @@ class TheServer:
                 if self.s == servers[2]:
                     self.on_accept(2)
                     break
-
                 self.data = self.s.recv(buffer_size)
                 if len(self.data) == 0:
                     self.on_close()
