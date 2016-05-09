@@ -4,6 +4,7 @@ import threading
 from struct import *
 import binascii
 from time import sleep
+#sudo apt-get install python-scapy
 
 LISTENING_HOST = ""
 LISTENING_PORTS = [6634, 6635, 6636]
@@ -15,19 +16,17 @@ class Forwarder(threading.Thread):
     def __init__(self, source):
         threading.Thread.__init__(self)
         self.source = source
-        self.dest = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.SOCK_STREAM)
+        self.dest = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.dest.connect((TARGET_HOSTS[0], TARGET_PORT))
 
     def run(self):
         print "starting forwarder... "
-
         try:
             while True:
                 data = self.dest.recv(4096)
-                ParseTCPpacket(data)
                 if len(data) == 0:
                     raise Exception("endpoint closed")
-                print "Received from dest: " + str(len(data))
+                #print "Received from dest: " + str(len(data))
                 self.source.write_to_source(data)
         except Exception, e:
             print "EXCEPTION reading from forwarding socket"
@@ -37,7 +36,7 @@ class Forwarder(threading.Thread):
         print "...ending forwarder."
 
     def write_to_dest(self, data):
-        print "Sending to dest: " + str(len(data))
+        #print "Sending to dest: " + str(len(data))
         self.dest.send(data)
 
     def stop_forwarding(self):
@@ -46,69 +45,85 @@ class Forwarder(threading.Thread):
 
 
 
-class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
-
+#class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
     def handle(self):
         print "Starting to handle connection..."
         f = Forwarder(self)
         f.start()
-
         try:
             while True:
-                data = self.request.recv(4096)
+                data = self.request.recv(4096).strip()
+                oftype = ParseRequest(data)
+                #APPLY LB
                 if len(data) == 0:
                     raise Exception("endpoint closed")
-                print "Received from source: " + str(len(data))
                 f.write_to_dest(data)
         except Exception, e:
             print "EXCEPTION reading from main socket"
             print e
 
-        f.stop_forwarding()
+        #f.stop_forwarding()
         print "...finishing handling connection"
 
 
     def write_to_source(self, data):
-        print "Sending to source: " + str(len(data))
+        #print "Sending to source: " + str(len(data))
         self.request.send(data)
 
     def stop_forwarding(self):
         print "...closing main socket"
         self.request.close()
 
+
+def ParseRequest(request):
+    request = binascii.hexlify(request)
+    ptype = int(request[0:2], 16)
+    ofop = int(request[2:4], 16)
+    if ptype == 4:
+        print "Handled OF1.3 message "+GetOFTypeName(ofop)
+        return ptype
+    return -1
+
+
+def GetOFTypeName(ofop):
+    return {
+        0 : 'HELLO',
+        1 : 'ERROR',
+        2 : 'ECHO_REQ',
+        3 : 'ECHO_RES',
+        4 : 'EXPERIMENTER',
+        5 : 'FEATURE_REQ',
+        6 : 'FEATURE_RES',
+        7 : 'GET_CONFIG_REQ',
+        8 : 'GET_CONFIG_RES',
+        9 : 'SET_CONFIG',
+        10 : 'PACKET_IN',
+        11 : 'FLOW_REMOVED',
+        12 : 'PORT_STATUS',
+        13 : 'PACKET_OUT',
+        14 : 'FLOW_MOD',
+        15 : 'GROUP_MOD',
+        16 : 'PORT_MOD',
+        17 : 'TABLE_MOD',
+        18 : 'MULTIPART_REQ',
+        19 : 'MULTIPART_RES',
+        20 : 'BARRIER_REQ',
+        21 : 'BARRIER_RES',
+        22 : 'QUEUE_GET_CONFIG_REQ',
+        23 : 'QUEUE_GET_CONFIG_RES',
+        24 : 'ROLE_REQ',
+        25 : 'ROLE_RES',
+        26 : 'GET_ASYNC_REQ',
+        27 : 'GET_ASYNC_RES',
+        28 : 'SET_ASYNC',
+        29 : 'METER_MOD',
+    }.get(ofop, '')
+
+
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    pass
-
-
-def ParseTCPpacket(packet):
-    print repr(packet)
-    ip_header = packet[0:20]
-    #now unpack them :)
-    iph = unpack('!BBHHHBBH4s4s' , ip_header)
-    version_ihl = iph[0]
-    version = version_ihl >> 4
-    ihl = version_ihl & 0xF
-    iph_length = ihl * 4
-    ttl = iph[5]
-    protocol = iph[6]
-    s_addr = socket.inet_ntoa(iph[8]);
-    d_addr = socket.inet_ntoa(iph[9]);
-    print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
-    tcp_header = packet[iph_length:iph_length+20]
-    #now unpack them :)
-    tcph = unpack('!HHLLBBHHH' , tcp_header)
-    source_port = tcph[0]
-    dest_port = tcph[1]
-    sequence = tcph[2]
-    acknowledgement = tcph[3]
-    doff_reserved = tcph[4]
-    tcph_length = doff_reserved >> 4
-    print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
-    h_size = iph_length + tcph_length * 4
-    data_size = len(packet) - h_size
-    #get data from the packet
-    data = packet[h_size:]
-    print 'Data : ' + data
+    daemon_threads = True
+    allow_reuse_address = True
 
 
 
