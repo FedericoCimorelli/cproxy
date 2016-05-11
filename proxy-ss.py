@@ -4,7 +4,8 @@ import threading
 from struct import *
 import binascii
 from time import sleep
-#sudo apt-get install python-scapy
+import requests
+
 
 LISTENING_HOST = ""
 LISTENING_PORTS = [6634, 6635, 6636]
@@ -86,6 +87,12 @@ def ParseRequest(request):
     return -1
 
 
+def MeasureLatency(instanceIP):
+    print "Measuring controller latency for "+instanceIP
+    r = requests.get('http://'+instanceIP+':8181/restconf/config/config:services/')
+    print str(r.elapsed.total_seconds()) +' sec'
+
+
 def GetOFTypeName(ofop):
     return {
         0 : 'HELLO',
@@ -146,6 +153,9 @@ if __name__ == "__main__":
     server_three_thread.daemon = True
     server_three_thread.start()
     print "Server loop running on port ", port
+
+    MeasureLatency('localhost')
+
     try:
         while True:
             sleep(1)
