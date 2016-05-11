@@ -11,6 +11,7 @@ LISTENING_HOST = ""
 LISTENING_PORTS = [6634, 6635, 6636]
 TARGET_PORT = 6633
 TARGET_HOSTS = ['127.0.0.1', '127.0.0.1', '127.0.0.1']
+latency_measure = [-1, -1, -1]
 
 
 class Forwarder(threading.Thread):
@@ -88,44 +89,16 @@ def ParseRequest(request):
 
 
 def MeasureLatency(instanceIP):
-    print "Measuring controller latency for "+instanceIP
-    r = requests.get('http://'+instanceIP+':8181/restconf/config/config:services/')
-    print str(r.elapsed.total_seconds()) +' sec'
+    for i in TARGET_HOSTS:
+            print "Measuring controller latency for "+i
+            try:
+                r = requests.get('http://'+i+':8181/restconf/config/config:services/')
+                latency_measure[TARGET_HOSTS.index(i)] = r.elapsed.total_seconds()
+                print str(r.elapsed.total_seconds()) +' sec'
+            except Exception, e:
+                print repr(e)
+                pass
 
-
-def GetOFTypeName(ofop):
-    return {
-        0 : 'HELLO',
-        1 : 'ERROR',
-        2 : 'ECHO_REQ',
-        3 : 'ECHO_RES',
-        4 : 'EXPERIMENTER',
-        5 : 'FEATURE_REQ',
-        6 : 'FEATURE_RES',
-        7 : 'GET_CONFIG_REQ',
-        8 : 'GET_CONFIG_RES',
-        9 : 'SET_CONFIG',
-        10 : 'PACKET_IN',
-        11 : 'FLOW_REMOVED',
-        12 : 'PORT_STATUS',
-        13 : 'PACKET_OUT',
-        14 : 'FLOW_MOD',
-        15 : 'GROUP_MOD',
-        16 : 'PORT_MOD',
-        17 : 'TABLE_MOD',
-        18 : 'MULTIPART_REQ',
-        19 : 'MULTIPART_RES',
-        20 : 'BARRIER_REQ',
-        21 : 'BARRIER_RES',
-        22 : 'QUEUE_GET_CONFIG_REQ',
-        23 : 'QUEUE_GET_CONFIG_RES',
-        24 : 'ROLE_REQ',
-        25 : 'ROLE_RES',
-        26 : 'GET_ASYNC_REQ',
-        27 : 'GET_ASYNC_RES',
-        28 : 'SET_ASYNC',
-        29 : 'METER_MOD',
-    }.get(ofop, '')
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -165,3 +138,38 @@ if __name__ == "__main__":
     server_one.shutdown()
     server_two.shutdown()
     server_three.shutdown()
+
+
+def GetOFTypeName(ofop):
+    return {
+        0 : 'HELLO',
+        1 : 'ERROR',
+        2 : 'ECHO_REQ',
+        3 : 'ECHO_RES',
+        4 : 'EXPERIMENTER',
+        5 : 'FEATURE_REQ',
+        6 : 'FEATURE_RES',
+        7 : 'GET_CONFIG_REQ',
+        8 : 'GET_CONFIG_RES',
+        9 : 'SET_CONFIG',
+        10 : 'PACKET_IN',
+        11 : 'FLOW_REMOVED',
+        12 : 'PORT_STATUS',
+        13 : 'PACKET_OUT',
+        14 : 'FLOW_MOD',
+        15 : 'GROUP_MOD',
+        16 : 'PORT_MOD',
+        17 : 'TABLE_MOD',
+        18 : 'MULTIPART_REQ',
+        19 : 'MULTIPART_RES',
+        20 : 'BARRIER_REQ',
+        21 : 'BARRIER_RES',
+        22 : 'QUEUE_GET_CONFIG_REQ',
+        23 : 'QUEUE_GET_CONFIG_RES',
+        24 : 'ROLE_REQ',
+        25 : 'ROLE_RES',
+        26 : 'GET_ASYNC_REQ',
+        27 : 'GET_ASYNC_RES',
+        28 : 'SET_ASYNC',
+        29 : 'METER_MOD',
+    }.get(ofop, '')
