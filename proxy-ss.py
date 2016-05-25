@@ -1,20 +1,26 @@
 import socket
 import SocketServer
 import threading
+import sys
 from struct import *
 import binascii
 from time import sleep
 import requests
+from collections import defaultdict
 
 
 LISTENING_HOST = ""
-LISTENING_PORTS = [6634, 6635, 6636]
+LISTENING_PORTS = [6634, 6635, 6636] #setup ovs switches according...
 TARGET_PORT = 6633
-TARGET_HOSTS = ['127.0.0.1', '127.0.0.1', '127.0.0.1']
-latency_measure = [-1, -1, -1]
+TARGET_HOSTS = ['127.0.0.1', '127.0.0.2', '127.0.0.3']
+LATENCY_MEASURE_DELAY = 3 #sec
+LATENCY_MEASERES_NUM = 5
+TARGET_LATENCY_MEASURES = defaultdict(list)
+
 
 
 class Forwarder(threading.Thread):
+
     def __init__(self, source):
         threading.Thread.__init__(self)
         self.source = source
@@ -33,7 +39,6 @@ class Forwarder(threading.Thread):
         except Exception, e:
             print "EXCEPTION reading from forwarding socket"
             print e
-
         self.source.stop_forwarding()
         print "...ending forwarder."
 
@@ -47,8 +52,9 @@ class Forwarder(threading.Thread):
 
 
 
-#class ThreadedTCPRequestHandler(SocketServer.BaseRequestHandler):
+
 class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
+
     def handle(self):
         print "Starting to handle connection..."
         f = Forwarder(self)
@@ -64,10 +70,8 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
         except Exception, e:
             print "EXCEPTION reading from main socket"
             print e
-
         #f.stop_forwarding()
         print "...finishing handling connection"
-
 
     def write_to_source(self, data):
         #print "Sending to source: " + str(len(data))
@@ -76,6 +80,33 @@ class ThreadedTCPRequestHandler(SocketServer.StreamRequestHandler):
     def stop_forwarding(self):
         print "...closing main socket"
         self.request.close()
+
+
+
+class MeasureLatenciesLooping():
+
+    def __init__(self):
+        for i in TARGET_HOSTS:
+            for j in range(1, LATENCY_MEASERES_NUM):
+                TARGET_LATENCY_MEASURES[i].append(sys.maxint)
+        print TARGET_LATENCY_MEASURES.get(TARGET_HOSTS[1])
+        self.isRunning = True
+
+    def runForever(self):
+       while self.isRunning == True:
+           for i in TARGET_HOSTS:
+               print "Measuring controller latency for "+i
+               try:
+                   r = requests.get('http://'+i+':8181/restconf/config/config:services/')
+                   latency_measured = r.elapsed.total_seconds()
+                   print str(r.elapsed.total_seconds()) +' sec'
+                   TARGET_LATENCY_MEASURES[i] = [latency_measured] + TARGET_LATENCY_MEASURES[i][:LATENCY_MEASERES_NUM-1]
+                   print TARGET_LATENCY_MEASURES[i]
+               except Exception, e:
+                   print repr(e)
+                   pass
+           sleep(LATENCY_MEASURE_DELAY)
+
 
 
 def ParseRequest(request):
@@ -88,24 +119,10 @@ def ParseRequest(request):
     return -1
 
 
-def MeasureLatency(instanceIP):
-    for i in TARGET_HOSTS:
-            print "Measuring controller latency for "+i
-            try:
-                r = requests.get('http://'+i+':8181/restconf/config/config:services/')
-                latency_measure[TARGET_HOSTS.index(i)] = r.elapsed.total_seconds()
-                print str(r.elapsed.total_seconds()) +' sec'
-            except Exception, e:
-                print repr(e)
-                pass
-
-
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     daemon_threads = True
     allow_reuse_address = True
-
-
 
 if __name__ == "__main__":
     server_one = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[0]), ThreadedTCPRequestHandler)
@@ -126,19 +143,20 @@ if __name__ == "__main__":
     server_three_thread.daemon = True
     server_three_thread.start()
     print "Server loop running on port ", port
-
-    MeasureLatency('localhost')
-
+    latenciesMeasure = MeasureLatenciesLooping()
+    latenciesMeasureThread = threading.Thread(target = latenciesMeasure.runForever)
+    latenciesMeasureThread.start()
+    print "Latencies measure loop started"
     try:
         while True:
             sleep(1)
     except:
         pass
     print "...servers stopping."
+    latenciesMeasure.isRunning = False
     server_one.shutdown()
     server_two.shutdown()
     server_three.shutdown()
-
 
 def GetOFTypeName(ofop):
     return {
