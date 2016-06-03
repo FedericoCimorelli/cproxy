@@ -12,9 +12,9 @@ from collections import defaultdict
 LISTENING_HOST = ""
 LISTENING_PORTS = [6634, 6635, 6636] #setup ovs switches according...
 TARGET_PORT = 6633
-TARGET_HOSTS = ['127.0.0.1', '127.0.0.2', '127.0.0.3']
-LATENCY_MEASURE_DELAY = 3 #sec
-LATENCY_MEASERES_NUM = 5
+TARGET_HOSTS = ['127.0.0.1', '127.0.0.1', '127.0.0.1']
+LATENCY_MEASURE_DELAY = 1 #sec
+LATENCY_MEASERES_NUM = 10
 TARGET_LATENCY_MEASURES = defaultdict(list)
 
 
@@ -89,8 +89,11 @@ class MeasureLatenciesLooping():
         for i in TARGET_HOSTS:
             for j in range(1, LATENCY_MEASERES_NUM):
                 TARGET_LATENCY_MEASURES[i].append(sys.maxint)
-        print TARGET_LATENCY_MEASURES.get(TARGET_HOSTS[1])
+        #print TARGET_LATENCY_MEASURES.get(TARGET_HOSTS[1])
         self.isRunning = True
+
+    def stop:
+        self.isRunning = false
 
     def runForever(self):
        while self.isRunning == True:
@@ -101,62 +104,13 @@ class MeasureLatenciesLooping():
                    latency_measured = r.elapsed.total_seconds()
                    print str(r.elapsed.total_seconds()) +' sec'
                    TARGET_LATENCY_MEASURES[i] = [latency_measured] + TARGET_LATENCY_MEASURES[i][:LATENCY_MEASERES_NUM-1]
-                   print TARGET_LATENCY_MEASURES[i]
+                   #print TARGET_LATENCY_MEASURES[i]
                except Exception, e:
                    print repr(e)
                    pass
            sleep(LATENCY_MEASURE_DELAY)
 
 
-
-def ParseRequest(request):
-    request = binascii.hexlify(request)
-    ptype = int(request[0:2], 16)
-    ofop = int(request[2:4], 16)
-    if ptype == 4:
-        print "Handled OF1.3 message "+GetOFTypeName(ofop)
-        return ptype
-    return -1
-
-
-
-class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    daemon_threads = True
-    allow_reuse_address = True
-
-if __name__ == "__main__":
-    server_one = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[0]), ThreadedTCPRequestHandler)
-    server_two = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[1]), ThreadedTCPRequestHandler)
-    server_three = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[2]), ThreadedTCPRequestHandler)
-    ip, port = server_one.server_address
-    server_one_thread = threading.Thread(target=server_one.serve_forever)
-    server_one_thread.daemon = True
-    server_one_thread.start()
-    print "Server loop running on port ", port
-    ip, port = server_two.server_address
-    server_two_thread = threading.Thread(target=server_two.serve_forever)
-    server_two_thread.daemon = True
-    server_two_thread.start()
-    print "Server loop running on port ", port
-    ip, port = server_three.server_address
-    server_three_thread = threading.Thread(target=server_three.serve_forever)
-    server_three_thread.daemon = True
-    server_three_thread.start()
-    print "Server loop running on port ", port
-    latenciesMeasure = MeasureLatenciesLooping()
-    latenciesMeasureThread = threading.Thread(target = latenciesMeasure.runForever)
-    latenciesMeasureThread.start()
-    print "Latencies measure loop started"
-    try:
-        while True:
-            sleep(1)
-    except:
-        pass
-    print "...servers stopping."
-    latenciesMeasure.isRunning = False
-    server_one.shutdown()
-    server_two.shutdown()
-    server_three.shutdown()
 
 def GetOFTypeName(ofop):
     return {
@@ -191,3 +145,66 @@ def GetOFTypeName(ofop):
         28 : 'SET_ASYNC',
         29 : 'METER_MOD',
     }.get(ofop, '')
+
+
+
+def ParseRequest(request):
+    request = binascii.hexlify(request)
+    ptype = int(request[0:2], 16)
+    ofop = int(request[2:4], 16)
+    if ptype == 4:
+        print "Handled OF1.3 message "+GetOFTypeName(ofop)
+        return ptype
+    return -1
+
+
+
+def GetAverageHostLatency(host):
+    t = 0
+    for i in TARGET_LATENCY_MEASURES[host]:
+        t = t + i
+    return t / LATENCY_MEASERES_NUM
+
+
+
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+if __name__ == "__main__":
+    server_one = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[0]), ThreadedTCPRequestHandler)
+    server_two = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[1]), ThreadedTCPRequestHandler)
+    server_three = ThreadedTCPServer((LISTENING_HOST, LISTENING_PORTS[2]), ThreadedTCPRequestHandler)
+    ip, port = server_one.server_address
+    server_one_thread = threading.Thread(target=server_one.serve_forever)
+    server_one_thread.daemon = True
+    server_one_thread.start()
+    print "Server loop running on port ", port
+    ip, port = server_two.server_address
+    server_two_thread = threading.Thread(target=server_two.serve_forever)
+    server_two_thread.daemon = True
+    server_two_thread.start()
+    print "Server loop running on port ", port
+    ip, port = server_three.server_address
+    server_three_thread = threading.Thread(target=server_three.serve_forever)
+    server_three_thread.daemon = True
+    server_three_thread.start()
+    print "Server loop running on port ", port
+    latenciesMeasure = MeasureLatenciesLooping()
+    latenciesMeasureThread = threading.Thread(target = latenciesMeasure.runForever)
+    #latenciesMeasureThread.start()
+    print "Latencies measure loop started"
+
+
+    print GetAverageHostLatency(TARGET_HOSTS[1])
+
+    try:
+        while True:
+            sleep(1)
+    except:
+        pass
+    print "...servers stopping."
+    latenciesMeasure.stop()
+    server_one.shutdown()
+    server_two.shutdown()
+    server_three.shutdown()
