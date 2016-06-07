@@ -12,8 +12,8 @@ import time
 
 
 CONTROLLERS_IP = ['127.0.0.1']
-NUM_SWITCHES = 2
-NUM_HOST_PER_SWITCH = 2 #at least 2!!
+NUM_SWITCHES = 1
+NUM_HOST_PER_SWITCH = 4 #at least 2!!
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -66,6 +66,7 @@ def DeployOF13Network():
    #     print received,"/",sent
    #     i = i + 1
    #     sleep(1)
+   time.sleep(5) #wait for handshake end...
    detect_hosts(net, ping_cnt=50)
    generate_traffic(net)
    #CLI( net )
@@ -90,42 +91,37 @@ def generate_mac_address_pairs(current_mac):
 
 
 def generate_traffic(net):
-    interpacket_delay_ms = 500
-    traffic_transmission_delay = 1
-    traffic_generation_duration_ms = 100000
-    traffic_transmission_interval = 1000
-    host_index = 0
+    interpacket_delay_ms = 1000 #1sec
+    traffic_transmission_delay = interpacket_delay_ms / 1000
+    traffic_transmission_interval = 10 #sec
     transmission_start = time.time()
     last_mac = hex(int('00000000', 16) + 0xffffffff)
     current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
-
+    message_count = 0
+    print "Test duration: " + str(traffic_transmission_interval)
     while (time.time() - transmission_start) <= traffic_transmission_interval:
-        src_mac, dst_mac = generate_mac_address_pairs(current_mac)
-        current_mac = hex(int(current_mac, 16) + 2)
-        print 'ttt000'
-        net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
-        print '{0} -b {1} -t arp'.format(src_mac, dst_mac)
-        #print net.hosts[host_index].waitOutput()
-        net.hosts[host_index + 1].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(dst_mac, src_mac))
-        print 'ttt'
-        time.sleep(traffic_transmission_delay)
-        host_index += NUM_HOST_PER_SWITCH
-        print 'ttt11'
-        if host_index >= len(net.hosts):
-            print 'ttt222'
-            for host in net.hosts:
-                host.waitOutput()
-            host_index = 0
+        for host_index in range(len(net.hosts)):
+            print 'Test in progress ' + str((time.time()-transmission_start)/traffic_transmission_interval*100)[:4]
+            src_mac, dst_mac = generate_mac_address_pairs(current_mac)
+            current_mac = hex(int(current_mac, 16) + 2)
+            net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
+            message_count+=1
+            print 'PACKET_IN [arp {0} > {1}]'.format(src_mac, dst_mac)
+            time.sleep(0.2)
+        #time.sleep(traffic_transmission_delay)
+        print 'Waiting for hosts output'
+        for host in net.hosts:
+            host.waitOutput()
         if int(current_mac, 16) >= int(last_mac, 16):
-            print 'ttt333'
-            current_mac = \
-                hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
+            current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
             # The minimum controller hard_timeout is 1 second.
             # Retransmission using the init_mac must start after the
             # minimum hard_timeout interval
             if (time.time - transmission_start) < 1:
                 time.sleep(1 - (time.time - transmission_start))
-        print 'ttt444'
+
+    print '\n**************************\nSend '+ str(message_count) +' OF PACKET_IN in ' + str(traffic_transmission_interval) + "seconds"
+    print 'Avg ' + str(message_count/traffic_transmission_interval) + 'msg/sec\n*********************\n'
     # Cleanup hosts console outputs and write flags after finishing
     # transmission
     for host in net.hosts:
