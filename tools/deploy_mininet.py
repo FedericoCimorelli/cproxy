@@ -13,7 +13,7 @@ import time
 
 CONTROLLERS_IP = ['127.0.0.1']
 NUM_SWITCHES = 1
-NUM_HOST_PER_SWITCH = 4 #at least 2!!
+NUM_HOST_PER_SWITCH = 2 #at least 2!!
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -27,11 +27,16 @@ class DisconnectedTopology(Topo):
         switch_num_name = 1
         for i in range(NUM_SWITCHES):
             switch_name = 's' + str(switch_num_name)
+            time.sleep(0.5)
+            print 'Adding switch ' + str(switch_name)
             switch = self.addSwitch(switch_name, cls=OVSKernelSwitch, protocols='OpenFlow13')
             host_num_name = 1
             for j in range(NUM_HOST_PER_SWITCH):
+                time.sleep(0.5)
+                print 'Adding host ' + 's'+str(switch_num_name)+'h'+str(host_num_name)
                 host = self.addHost('s'+str(switch_num_name)+'h'+str(host_num_name))
                 #switch.linkTo(host)
+                time.sleep(0.5)
                 self.addLink(host, switch)
                 host_num_name = host_num_name + 1
             switch_num_name = switch_num_name + 1
@@ -66,10 +71,14 @@ def DeployOF13Network():
    #     print received,"/",sent
    #     i = i + 1
    #     sleep(1)
+   print 'Waiting for handshake end...'
    time.sleep(5) #wait for handshake end...
    detect_hosts(net, ping_cnt=50)
    generate_traffic(net)
    #CLI( net )
+   print '\nOF traffic generated'
+   print 'Waiting 15 secs, then clean...\n'
+   time.sleep(15) #wait for handshake end...
    net.stop()
 
 
@@ -93,21 +102,25 @@ def generate_mac_address_pairs(current_mac):
 def generate_traffic(net):
     interpacket_delay_ms = 1000 #1sec
     traffic_transmission_delay = interpacket_delay_ms / 1000
-    traffic_transmission_interval = 10 #sec
+    traffic_transmission_interval = 3 #sec
     transmission_start = time.time()
     last_mac = hex(int('00000000', 16) + 0xffffffff)
     current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
     message_count = 0
     print "Test duration: " + str(traffic_transmission_interval)
+
+    for s in net.switches:
+        s.sendCmd('sudo ovs-ofctl del-flows ' + str(s))
+
     while (time.time() - transmission_start) <= traffic_transmission_interval:
         for host_index in range(len(net.hosts)):
-            print 'Test in progress ' + str((time.time()-transmission_start)/traffic_transmission_interval*100)[:4]
+            print 'Test in progress ' + str((time.time()-transmission_start)/traffic_transmission_interval*100)[:4]+'%'
             src_mac, dst_mac = generate_mac_address_pairs(current_mac)
             current_mac = hex(int(current_mac, 16) + 2)
             net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
             message_count+=1
             print 'PACKET_IN [arp {0} > {1}]'.format(src_mac, dst_mac)
-            time.sleep(0.2)
+            time.sleep(0.5)
         #time.sleep(traffic_transmission_delay)
         print 'Waiting for hosts output'
         for host in net.hosts:
@@ -117,8 +130,9 @@ def generate_traffic(net):
             # The minimum controller hard_timeout is 1 second.
             # Retransmission using the init_mac must start after the
             # minimum hard_timeout interval
-            if (time.time - transmission_start) < 1:
-                time.sleep(1 - (time.time - transmission_start))
+            #if (time.time - transmission_start) < 1:
+            #    time.sleep(1 - (time.time - transmission_start))
+            #    print 'WWWWWWWWWWW'
 
     print '\n**************************\nSend '+ str(message_count) +' OF PACKET_IN in ' + str(traffic_transmission_interval) + "seconds"
     print 'Avg ' + str(message_count/traffic_transmission_interval) + 'msg/sec\n*********************\n'
