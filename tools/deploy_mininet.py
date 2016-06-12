@@ -11,7 +11,8 @@ import re
 import time
 
 
-CONTROLLERS_IP = ['127.0.0.1']
+CONTROLLERS_IPS = ['10.42.0.1']
+CONTROLLERS_PORTS = [6634]
 NUM_SWITCHES = 1
 NUM_HOST_PER_SWITCH = 2 #at least 2!!
 
@@ -49,7 +50,7 @@ def DeployOF13Network():
    topology = DisconnectedTopology()
    net = Mininet(controller=RemoteController, topo=topology, switch=MultiSwitch13, build=False, autoSetMacs=True)
    info( '*** Adding controllers\n')
-   c1 = net.addController('c1', controller=RemoteController, ip="127.0.0.1", port=6633)
+   c1 = net.addController('c1', controller=RemoteController, ip=CONTROLLERS_IPS[0], port=CONTROLLERS_PORTS[0])
    #c1 = net.addController('c1', controller=RemoteController, ip="192.168.56.102", port=6633)
    #c2 = net.addController('c2', controller=RemoteController, ip="192.168.56.101", port=6633)
    #c3 = net.addController('c3', controller=RemoteController, ip="192.168.56.103", port=6633)
@@ -77,8 +78,8 @@ def DeployOF13Network():
    generate_traffic(net)
    #CLI( net )
    print '\nOF traffic generated'
-   print 'Waiting 15 secs, then clean...\n'
-   time.sleep(15) #wait for handshake end...
+   print 'Waiting 5 secs, then clean...\n'
+   time.sleep(5) #wait for handshake end...
    net.stop()
 
 
@@ -86,7 +87,7 @@ def detect_hosts(net, ping_cnt=50):
     i = 0
     print '\nSending ping from all hosts, in progress'
     for host in net.hosts:
-        host.sendCmd(str(host) + 'ping -c {0} {1}'.format(str(ping_cnt), str(CONTROLLERS_IP[0])))
+        host.sendCmd(str(host) + 'ping -c {0} {1}'.format(str(ping_cnt), str(CONTROLLERS_IPS[0])))
         host.waitOutput()
     print 'Sending ping from all hosts, done\n'
 
@@ -102,7 +103,7 @@ def generate_mac_address_pairs(current_mac):
 def generate_traffic(net):
     interpacket_delay_ms = 1000 #1sec
     traffic_transmission_delay = interpacket_delay_ms / 1000
-    traffic_transmission_interval = 3 #sec
+    traffic_transmission_interval = 5 #sec
     transmission_start = time.time()
     last_mac = hex(int('00000000', 16) + 0xffffffff)
     current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
