@@ -7,22 +7,30 @@ import time
 from collections import defaultdict
 #from termcolor import colored
 
-LOAD_BALANCER_ENABLE = True
-LISTENING_HOST = ""
+
 #setup ovs switches according...
 LB_PORTS = [6634, 6635, 6636]
 CONTROLLERS_PORT = 6633
+CONTROLLERS_COUNT = 1
 CONTROLLERS_IP = ['192.168.1.110', '127.0.0.2', '127.0.0.3']
 MININET_IP = '192.168.1.109'
 LATENCY_AVG_MEASURES_NUM = 5
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS = defaultdict(list)
 OF_TEST_FLOWMOD_LATENCY = []
+OFReqForwarders = []
 
 
 #TODO
+class StaticForwarder():
+    n = 0
+
+    def getForwarderDest(self, sourcePort):
+        if source == LB_PORTS[0]:
+            return
+
 '''
-class SchedulerLinear():
+class StaticForwarder():
 
 class SchedulerRoundRobin():
 
@@ -31,42 +39,34 @@ class SchedulerWardrop():
 
 class OpenFlowRequestForwarder(threading.Thread):
 
-    socket_to_odl_one = None
-    socket_to_odl_two = None
-    socket_to_odl_two = None
+    socket_to_odl = None
     serverListeningPort = 6633
 
     def __init__(self, client_address, serverListeningPort):
         threading.Thread.__init__(self)
         self.client_address = client_address
         self.serverListeningPort = serverListeningPort
+        self.socket_to_odl = []
+        targetControllerIndex = getStaticControllerIndexFromOFport(self.serverListeningPort)
         print 'INFO    Setting OpenFlowRequestHandler socket from ' \
-              + str(client_address.client_address) + ' to ' + str(CONTROLLERS_IP[0]) + ':' + str(CONTROLLERS_PORT)
-        print 'INFO    Setting OpenFlowRequestHandler socket from ' \
-              + str(client_address.client_address) + ' to ' + str(CONTROLLERS_IP[1]) + ':' + str(CONTROLLERS_PORT)
-        print 'INFO    Setting OpenFlowRequestHandler socket from ' \
-              + str(client_address.client_address) + ' to ' + str(CONTROLLERS_IP[2]) + ':' + str(CONTROLLERS_PORT)
-        self.socket_to_odl_one = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket_to_odl_two = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket_to_odl_three = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+              + str(client_address.client_address) + ' to ' + str(CONTROLLERS_IP[targetControllerIndex]) + ':' + str(CONTROLLERS_PORT)
+        self.socket_to_odl = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.socket_to_odl_one.connect((CONTROLLERS_IP[0], CONTROLLERS_PORT))
-            self.socket_to_odl_two.connect((CONTROLLERS_IP[1], CONTROLLERS_PORT))
-            self.socket_to_odl_three.connect((CONTROLLERS_IP[2], CONTROLLERS_PORT))
+            self.socket_to_odl.connect((CONTROLLERS_IP[targetControllerIndex], CONTROLLERS_PORT))
         except Exception, e:
             print e
 
     def run(self):
         try:
             while True:
-                data = self.socket_to_odl_one.recv(65565)
-                source = str(self.socket_to_odl_one.getpeername()[0])+":"+str(self.socket_to_odl_one.getpeername()[1])
+                data = self.socket_to_odl.recv(65565)
+                source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                 ofop = ParseRequestForOFop(data, source)
                 if ofop == 14: #FLOW_MOD
                     address = ParseFlowModRequestForAddress(data)
                     if address != '':
                         #WHICH  CONTROLLER=?????
-                        ComputeOFopLatency(address, self.socket_to_odl_one.getpeername())
+                        ComputeOFopLatency(address, self.socket_to_odl.getpeername())
                 if len(data) == 0:
                     raise Exception("endpoint closed")
                     #print 'Endpoint closed'
@@ -78,28 +78,21 @@ class OpenFlowRequestForwarder(threading.Thread):
         self.client_address.stop_forwarding()
 
     def write_to_dest(self, data, OFop=0):
-        if OFop != 10 or LOAD_BALANCER_ENABLE != True:
-            if self.serverListeningPort == LB_PORTS[0]:
-                self.socket_to_odl_one.send(data)
-            if self.serverListeningPort == LB_PORTS[1]:
-                self.socket_to_odl_two.send(data)
-            if self.serverListeningPort == LB_PORTS[2]:
-                self.socket_to_odl_three.send(data)
-        else:
-            if OFop == 10: #Handle PACKET_IN, Apply forwarding scheme!
-                self.socket_to_odl_one.send(data)
-
-
-    def write_to_dest_lb(self, data):
-        self.socket_to_odl_one.send(data)
-        #self.socket_to_odl_two.send(data)
-        #self.socket_to_odl_three.send(data)
-
+        self.socket_to_odl.send(data)
 
     def stop_forwarding(self):
-        self.socket_to_odl_one.close()
-        self.socket_to_odl_two.close()
-        self.socket_to_odl_three.close()
+        self.socket_to_odl.close()
+
+
+
+
+def getStaticControllerIndexFromOFport(port):
+    if port == LB_PORTS[0]:
+        return 0
+    if port == LB_PORTS[1]:
+        return 1
+    if port == LB_PORTS[2]:
+        return 2
 
 
 
@@ -107,24 +100,33 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
 
     def handle(self):
         print "INFO    Starting to handle connection..."
-        OFReqForwarder = OpenFlowRequestForwarder(self, self.server.serverListeningPort)
-        OFReqForwarder.start()
+        OFReqForwarders = []
+        if len(OFReqForwarders) == 0:
+            for i in range(CONTROLLERS_COUNT):
+                print 'INFO    Setting OpenFlowRequestHandler socket from ' \
+                      + str(MININET_IP) + ' to ' + str(CONTROLLERS_IP[i]) + ':' + str(CONTROLLERS_PORT)
+                OFReqForwarders.append(OpenFlowRequestForwarder(self, self.server.serverListeningPort))
+                OFReqForwarders[i].start()
         try:
             while True:
                 data = self.request.recv(65565)
-                ofop = ParseRequestForOFop(data, str(MININET_IP)+':'+str(self.server.serverListeningPort))
                 if len(data) == 0:
                     raise Exception("endpoint closed")
+                ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
                     if address != '':
                         OF_TEST_FLOWMOD_TS[address].append(time.time())
-                OFReqForwarder.write_to_dest(data, ofop)
+                #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
+                OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
         except Exception, e:
             print "ERROR   Exception reading from main socket"
             #print e
-            pass
-        OFReqForwarder.stop_forwarding()
+        for i in range(CONTROLLERS_COUNT):
+            OFReqForwarders[i].stop_forwarding()
 
     def write_to_source(self, data):
         self.request.sendall(data)
@@ -223,26 +225,19 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     def setListeningPortValue(self, listeningPort):
         self.serverListeningPort = listeningPort
 
+
+
 if __name__ == "__main__":
     print '\n\n\n'
-    print 'INFO    Setting up proxy socket server on 127.0.0.1:'+str(LB_PORTS[0])
-    print 'INFO    Setting up proxy socket server on 127.0.0.1:'+str(LB_PORTS[1])
-    print 'INFO    Setting up proxy socket server on 127.0.0.1:'+str(LB_PORTS[2])
-    proxy_one = ThreadedTCPServer(('', LB_PORTS[0]), OFSouthboundRequestHandler)
-    proxy_one.setListeningPortValue(LB_PORTS[0])
-    proxy_two = ThreadedTCPServer(('', LB_PORTS[1]), OFSouthboundRequestHandler)
-    proxy_two.setListeningPortValue(LB_PORTS[1])
-    proxy_three = ThreadedTCPServer(('', LB_PORTS[2]), OFSouthboundRequestHandler)
-    proxy_three.setListeningPortValue(LB_PORTS[2])
-    proxy_one_thread = threading.Thread(target=proxy_one.serve_forever)
-    proxy_two_thread = threading.Thread(target=proxy_two.serve_forever)
-    proxy_three_thread = threading.Thread(target=proxy_three.serve_forever)
-    proxy_one_thread.daemon = True
-    proxy_two_thread.daemon = True
-    proxy_three_thread.daemon = True
-    proxy_one_thread.start()
-    proxy_two_thread.start()
-    proxy_three_thread.start()
+    proxy = []
+    proxyThread = []
+    for i in range(CONTROLLERS_COUNT):
+        print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[i])
+        proxy.append(ThreadedTCPServer(('', LB_PORTS[i]), OFSouthboundRequestHandler))
+        proxy[i].setListeningPortValue(LB_PORTS[i])
+        proxyThread.append(threading.Thread(target=proxy[i].serve_forever))
+        proxyThread[i].daemon = True
+        proxyThread[i].start()
     print 'INFO    Handling requests, press <Ctrl-C> to quit\n'
     try:
         while True:
@@ -251,6 +246,5 @@ if __name__ == "__main__":
         pass
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
-    proxy_one.shutdown()
-    proxy_two.shutdown()
-    proxy_three.shutdown()
+    for i in range(CONTROLLERS_COUNT):
+        proxy[i].shutdown()
