@@ -18,24 +18,68 @@ LATENCY_AVG_MEASURES_NUM = 5
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS = defaultdict(list)
 OF_TEST_FLOWMOD_LATENCY = []
-OFReqForwarders = []
+OF_REQ_FORWARDERS = []
+FORWARDING_SCHEME = None #Set it in main method
 
 
-#TODO
+
 class StaticForwarder():
-    n = 0
+    name = 'static'
 
-    def getForwarderDest(self, sourcePort):
-        if source == LB_PORTS[0]:
-            return
+    def __init__(self):
+        pass
 
-'''
-class StaticForwarder():
+    def getControllerDestIndex(self, sourcePort):
+        if sourcePort == LB_PORTS[0]:
+            return 0
+        if sourcePort == LB_PORTS[1]:
+            return 1
+        if sourcePort == LB_PORTS[2]:
+            return 2
 
-class SchedulerRoundRobin():
 
-class SchedulerWardrop():
-'''
+
+class RoundRobinForwarder():
+    name = 'roundrobin'
+    last_index = 0
+
+    def __init__(self):
+        pass
+
+    def getControllerDestIndex(self, sourcePort):
+        return (self.last_index+1)%CONTROLLERS_COUNT
+
+
+
+class WardropForwarder():
+    name = 'wardrop'
+    probs = []
+
+    def __init__(self):
+        for i in range(CONTROLLERS_COUNT):
+            self.probs.append(1/CONTROLLERS_COUNT)
+
+    def update(self, controllerIp, controllerNewLatency):
+        #TODO
+        print 'INFO    Wardrop forwarder, updated probs: ' + str(self.probs)
+
+    def getControllerDestIndex(self, sourcePort):
+        return self.probs.index(min(self.probs))
+
+
+
+
+def getStaticControllerIndexFromOFport(port):
+    if port == LB_PORTS[0]:
+        return 0
+    if port == LB_PORTS[1]:
+        return 1
+    if port == LB_PORTS[2]:
+        return 2
+
+
+
+
 
 class OpenFlowRequestForwarder(threading.Thread):
 
@@ -66,7 +110,9 @@ class OpenFlowRequestForwarder(threading.Thread):
                     address = ParseFlowModRequestForAddress(data)
                     if address != '':
                         #WHICH  CONTROLLER=?????
-                        ComputeOFopLatency(address, self.socket_to_odl.getpeername())
+                        latency = ComputeOFopLatency(address, self.socket_to_odl.getpeername())
+                        if FORWARDING_SCHEME.name == 'wardrop':
+                            FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                 if len(data) == 0:
                     raise Exception("endpoint closed")
                     #print 'Endpoint closed'
@@ -83,16 +129,6 @@ class OpenFlowRequestForwarder(threading.Thread):
     def stop_forwarding(self):
         self.socket_to_odl.close()
 
-
-
-
-def getStaticControllerIndexFromOFport(port):
-    if port == LB_PORTS[0]:
-        return 0
-    if port == LB_PORTS[1]:
-        return 1
-    if port == LB_PORTS[2]:
-        return 2
 
 
 
@@ -117,11 +153,14 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     address = ParsePacketInRequestForAddress(data)
                     if address != '':
                         OF_TEST_FLOWMOD_TS[address].append(time.time())
-                #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
-                OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                    #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
+                    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                    OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                else:
+                    targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
+                    OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
         except Exception, e:
             print "ERROR   Exception reading from main socket"
             #print e
@@ -199,6 +238,9 @@ def ParsePacketInRequestForAddress(request):
 
 
 def ComputeOFopLatency(address, controller_ip):
+    #
+    #Update vector here!!!!!!!!
+    #
     packet_in_ts = OF_TEST_FLOWMOD_TS[address][0]
     if packet_in_ts != []:
         flow_mod_ts = time.time()
@@ -208,6 +250,7 @@ def ComputeOFopLatency(address, controller_ip):
         LATENCY_MEASURES[controller_ip] = [lt] + LATENCY_MEASURES[controller_ip][:LATENCY_AVG_MEASURES_NUM-1]
         print "INFO    OFop latency update "+str(controller_ip)+":" + str(lt)+"s"
         print "INFO    OFop latency avg    "+str(controller_ip)+":" + str(ComputeOFopAvgLatency(controller_ip))+"s"
+        return lt
     else:
         print 'WARNING Compute OF op latency, corresponding PACKET_IN ts not found'
 
@@ -229,6 +272,8 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 if __name__ == "__main__":
     print '\n\n\n'
+    #FORWARDING_SCHEME = StaticForwarder()
+    FORWARDING_SCHEME = WardropForwarder()
     proxy = []
     proxyThread = []
     for i in range(CONTROLLERS_COUNT):
