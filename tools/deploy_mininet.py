@@ -15,6 +15,7 @@ CONTROLLERS_IPS = ['10.42.0.1']
 CONTROLLERS_PORTS = [6634]
 NUM_SWITCHES = 1
 NUM_HOST_PER_SWITCH = 2 #at least 2!!
+PACKETS_GEN_DURATION = 250
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -73,13 +74,13 @@ def DeployOF13Network():
    #     i = i + 1
    #     sleep(1)
    print 'Waiting for handshake end...'
-   time.sleep(5) #wait for handshake end...
+   time.sleep(10) #wait for handshake end...
    detect_hosts(net, ping_cnt=50)
    generate_traffic(net)
    #CLI( net )
    print '\nOF traffic generated'
-   print 'Waiting 5 secs, then clean...\n'
-   time.sleep(5) #wait for handshake end...
+   print 'Waiting, then clean...\n'
+   time.sleep(15) #wait for handshake end...
    net.stop()
 
 
@@ -103,25 +104,24 @@ def generate_mac_address_pairs(current_mac):
 def generate_traffic(net):
     interpacket_delay_ms = 1000 #1sec
     traffic_transmission_delay = interpacket_delay_ms / 1000
-    traffic_transmission_interval = 5 #sec
     transmission_start = time.time()
     last_mac = hex(int('00000000', 16) + 0xffffffff)
     current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
     message_count = 0
-    print "Test duration: " + str(traffic_transmission_interval)
+    print "Test duration: " + str(PACKETS_GEN_DURATION)
 
     for s in net.switches:
         s.sendCmd('sudo ovs-ofctl del-flows ' + str(s))
 
-    while (time.time() - transmission_start) <= traffic_transmission_interval:
+    while (time.time() - transmission_start) <= PACKETS_GEN_DURATION:
         for host_index in range(len(net.hosts)):
-            print 'Test in progress ' + str((time.time()-transmission_start)/traffic_transmission_interval*100)[:4]+'%'
+            print 'Test in progress ' + str((time.time()-transmission_start)/PACKETS_GEN_DURATION*100)[:4]+'%'
             src_mac, dst_mac = generate_mac_address_pairs(current_mac)
             current_mac = hex(int(current_mac, 16) + 2)
             net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
             message_count+=1
             print 'PACKET_IN [arp {0} > {1}]'.format(src_mac, dst_mac)
-            time.sleep(0.5)
+            time.sleep(0.065)
         #time.sleep(traffic_transmission_delay)
         print 'Waiting for hosts output'
         for host in net.hosts:
@@ -135,8 +135,8 @@ def generate_traffic(net):
             #    time.sleep(1 - (time.time - transmission_start))
             #    print 'WWWWWWWWWWW'
 
-    print '\n**************************\nSend '+ str(message_count) +' OF PACKET_IN in ' + str(traffic_transmission_interval) + "seconds"
-    print 'Avg ' + str(message_count/traffic_transmission_interval) + 'msg/sec\n*********************\n'
+    print '\n**************************\nSend '+ str(message_count) +' OF PACKET_IN in ' + str(PACKETS_GEN_DURATION) + "seconds"
+    print 'Avg ' + str(message_count/PACKETS_GEN_DURATION) + 'msg/sec\n*********************\n'
     # Cleanup hosts console outputs and write flags after finishing
     # transmission
     for host in net.hosts:

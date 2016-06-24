@@ -5,16 +5,20 @@ import binascii
 from time import sleep
 import time
 from collections import defaultdict
+import csv
 #from termcolor import colored
 
 
 #setup ovs switches according...
+CSV_FILE_NAME = 'output.csv'
+CSV_OUTPUT_FILE = open(CSV_FILE_NAME, 'wb')
+CSV_OUTPUT_WRITER = csv.writer(CSV_OUTPUT_FILE)
 LB_PORTS = [6634, 6635, 6636]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 1
-CONTROLLERS_IP = ['192.168.1.110', '127.0.0.2', '127.0.0.3']
-MININET_IP = '192.168.1.109'
-LATENCY_AVG_MEASURES_NUM = 5
+CONTROLLERS_IP = ['10.42.0.20', '127.0.0.2', '127.0.0.3']
+MININET_IP = '10.42.0.96'
+LATENCY_AVG_MEASURES_NUM = 20
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS = defaultdict(list)
 OF_TEST_FLOWMOD_LATENCY = []
@@ -119,7 +123,7 @@ class OpenFlowRequestForwarder(threading.Thread):
                 self.client_address.write_to_source(data)
         except Exception, e:
             print "ERROR   Exception reading from forwarding socket"
-            #print e
+            print e
             pass
         self.client_address.stop_forwarding()
 
@@ -163,7 +167,7 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
         except Exception, e:
             print "ERROR   Exception reading from main socket"
-            #print e
+            print e
         for i in range(CONTROLLERS_COUNT):
             OFReqForwarders[i].stop_forwarding()
 
@@ -238,15 +242,14 @@ def ParsePacketInRequestForAddress(request):
 
 
 def ComputeOFopLatency(address, controller_ip):
-    #
-    #Update vector here!!!!!!!!
-    #
     packet_in_ts = OF_TEST_FLOWMOD_TS[address][0]
     if packet_in_ts != []:
         flow_mod_ts = time.time()
         del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
-        lt = round(lt, 4)
+        lt = round(lt, 5)
+        CSV_OUTPUT_WRITER.writerow([lt])
+        CSV_OUTPUT_FILE.flush()
         LATENCY_MEASURES[controller_ip] = [lt] + LATENCY_MEASURES[controller_ip][:LATENCY_AVG_MEASURES_NUM-1]
         print "INFO    OFop latency update "+str(controller_ip)+":" + str(lt)+"s"
         print "INFO    OFop latency avg    "+str(controller_ip)+":" + str(ComputeOFopAvgLatency(controller_ip))+"s"
@@ -257,7 +260,6 @@ def ComputeOFopLatency(address, controller_ip):
 
 def ComputeOFopAvgLatency(controller_ip):
     return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),4)
-
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -291,5 +293,6 @@ if __name__ == "__main__":
         pass
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
+    CSV_OUTPUT_FILE.close()
     for i in range(CONTROLLERS_COUNT):
         proxy[i].shutdown()
