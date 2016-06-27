@@ -11,11 +11,11 @@ import re
 import time
 
 
-CONTROLLERS_IPS = ['10.42.0.1']
-CONTROLLERS_PORTS = [6634]
+CONTROLLERS_IPS = ['127.0.0.1']
+CONTROLLERS_PORTS = [6634, 6635, 6636]
 NUM_SWITCHES = 1
 NUM_HOST_PER_SWITCH = 2 #at least 2!!
-PACKETS_GEN_DURATION = 250
+PACKETS_GEN_DURATION = 10
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -38,7 +38,7 @@ class DisconnectedTopology(Topo):
                 print 'Adding host ' + 's'+str(switch_num_name)+'h'+str(host_num_name)
                 host = self.addHost('s'+str(switch_num_name)+'h'+str(host_num_name))
                 #switch.linkTo(host)
-                time.sleep(0.5)
+                time.sleep(0.05)
                 self.addLink(host, switch)
                 host_num_name = host_num_name + 1
             switch_num_name = switch_num_name + 1
@@ -53,8 +53,8 @@ def DeployOF13Network():
    info( '*** Adding controllers\n')
    c1 = net.addController('c1', controller=RemoteController, ip=CONTROLLERS_IPS[0], port=CONTROLLERS_PORTS[0])
    #c1 = net.addController('c1', controller=RemoteController, ip="192.168.56.102", port=6633)
-   #c2 = net.addController('c2', controller=RemoteController, ip="192.168.56.101", port=6633)
-   #c3 = net.addController('c3', controller=RemoteController, ip="192.168.56.103", port=6633)
+   #c2 = net.addController('c2', controller=RemoteController, ip=CONTROLLERS_IPS[0], port=CONTROLLERS_PORTS[1])
+   #c3 = net.addController('c3', controller=RemoteController, ip=CONTROLLERS_IPS[0], port=CONTROLLERS_PORTS[2])
    info( '*** Starting network\n')
    net.build()
    info( '*** Starting controllers\n')
@@ -80,7 +80,7 @@ def DeployOF13Network():
    #CLI( net )
    print '\nOF traffic generated'
    print 'Waiting, then clean...\n'
-   time.sleep(15) #wait for handshake end...
+   time.sleep(10) #wait for handshake end...
    net.stop()
 
 
@@ -121,7 +121,7 @@ def generate_traffic(net):
             net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
             message_count+=1
             print 'PACKET_IN [arp {0} > {1}]'.format(src_mac, dst_mac)
-            time.sleep(0.065)
+            time.sleep(0.3)
         #time.sleep(traffic_transmission_delay)
         print 'Waiting for hosts output'
         for host in net.hosts:
