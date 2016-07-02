@@ -12,10 +12,10 @@ import time
 
 
 CONTROLLERS_IPS = ['127.0.0.1']
-CONTROLLERS_PORTS = [6634, 6635, 6636]
-NUM_SWITCHES = 1
-NUM_HOST_PER_SWITCH = 2 #at least 2!!
-PACKETS_GEN_DURATION = 10
+CONTROLLERS_PORTS = [6663, 6665, 6666]
+NUM_SWITCHES = 24
+NUM_HOST_PER_SWITCH = 1 #at least 2!!
+PACKETS_GEN_DURATION = 120
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -29,16 +29,16 @@ class DisconnectedTopology(Topo):
         switch_num_name = 1
         for i in range(NUM_SWITCHES):
             switch_name = 's' + str(switch_num_name)
-            time.sleep(0.5)
+            #time.sleep(0.5)
             print 'Adding switch ' + str(switch_name)
             switch = self.addSwitch(switch_name, cls=OVSKernelSwitch, protocols='OpenFlow13')
             host_num_name = 1
             for j in range(NUM_HOST_PER_SWITCH):
-                time.sleep(0.5)
+                #time.sleep(0.5)
                 print 'Adding host ' + 's'+str(switch_num_name)+'h'+str(host_num_name)
                 host = self.addHost('s'+str(switch_num_name)+'h'+str(host_num_name))
                 #switch.linkTo(host)
-                time.sleep(0.05)
+                #time.sleep(0.05)
                 self.addLink(host, switch)
                 host_num_name = host_num_name + 1
             switch_num_name = switch_num_name + 1
@@ -74,8 +74,7 @@ def DeployOF13Network():
    #     i = i + 1
    #     sleep(1)
    print 'Waiting for handshake end...'
-   time.sleep(10) #wait for handshake end...
-   detect_hosts(net, ping_cnt=50)
+   time.sleep(15) #wait for handshake end...
    generate_traffic(net)
    #CLI( net )
    print '\nOF traffic generated'
@@ -121,9 +120,9 @@ def generate_traffic(net):
             net.hosts[host_index].sendCmd('sudo mz -a {0} -b {1} -t arp'.format(src_mac, dst_mac))
             message_count+=1
             print 'PACKET_IN [arp {0} > {1}]'.format(src_mac, dst_mac)
-            time.sleep(0.3)
+            #time.sleep(0.001)
         #time.sleep(traffic_transmission_delay)
-        print 'Waiting for hosts output'
+        #print 'Waiting for hosts output'
         for host in net.hosts:
             host.waitOutput()
         if int(current_mac, 16) >= int(last_mac, 16):

@@ -22,12 +22,11 @@ CSV_OUTPUT_FILE3 = open(CSV_FILE_NAME[2], 'wb')
 CSV_OUTPUT_WRITER1 = csv.writer(CSV_OUTPUT_FILE1)
 CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2)
 CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3)
-LB_PORTS = [6664, 6665, 6666]
+LB_PORT = 6663
 CONTROLLERS_PORT = 6633
-CONTROLLERS_COUNT = 3
-CONTROLLERS_IP = ['10.42.0.14','10.42.0.92','10.42.0.208']
+CONTROLLERS_COUNT = 2
+CONTROLLERS_IP = ['10.42.0.92', '10.42.0.14', '']
 MININET_IP = '127.0.0.1'
-LATENCY_AVG_MEASURES_NUM = 20
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS =  []
 OF_TEST_FLOWMOD_LATENCY = []
@@ -125,11 +124,12 @@ class OpenFlowRequestForwarder(threading.Thread):
                     if ofop == 14: #FLOW_MOD
                         address = ParseFlowModRequestForAddress(data)
                         if address != '':
-                            latency = ComputeOFopLatency(address, self.serverListeningPort)
-                            if FORWARDING_SCHEME.name == 'wardrop' and latency != -1:
-                                FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
+                            latency = ComputeOFopLatency(address, self.socket_to_odl.getpeername()[0])
+                    #        if FORWARDING_SCHEME.name == 'wardrop' and latency != -1:
+                    #            FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                     #if len(data) == 0:
                     #    raise Exception("endpoint closed")
+                    #if self.targetControllerIp == CONTROLLERS_IP[0]:
                     self.client_address.write_to_source(data)
         except Exception, e:
             print "ERROR   Exception reading from forwarding socket"
@@ -137,9 +137,8 @@ class OpenFlowRequestForwarder(threading.Thread):
             pass
         self.client_address.stop_forwarding()
 
-    def write_to_dest(self, data, OFop=0):
-      	#print self.targetControllerIp
-	self.socket_to_odl.send(data)
+    def write_to_dest(self, data):
+        self.socket_to_odl.send(data)
 
     def stop_forwarding(self):
         self.socket_to_odl.close()
@@ -160,22 +159,18 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
         try:
             while True:
                 data = self.request.recv(65565)
-                #if len(data) == 0:
-                #    raise Exception("endpoint closed")
                 if len(data) != 0:
                     ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
                     if ofop == 10: #on PACKET_IN
                         address = ParsePacketInRequestForAddress(data)
-			#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
-                        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
-			if address != '':
-                            OF_TEST_FLOWMOD_TS.append((address, LB_PORTS[targetControllerIndex], time.time()))
-			OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
-                    else:
-                        targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
-                    OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                        #    #targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                        if address != '':
+                            OF_TEST_FLOWMOD_TS.append((address, time.time()))
+                    #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                    #else:
+                    #    targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
+                    for i in range(CONTROLLERS_COUNT):
+                        OFReqForwarders[i].write_to_dest(data)
         except Exception, e:
             print "ERROR   Exception reading from main socket"
             print e
@@ -252,39 +247,36 @@ def ParsePacketInRequestForAddress(request):
     return ''
 
 
-def ComputeOFopLatency(address, controller_port):
+def ComputeOFopLatency(address, controller_ip):
     packet_in_ts = None
-    pt = LB_PORTS[0]
     try:
-	for i in OF_TEST_FLOWMOD_TS:
-	    if i[0] == address:
-		packet_in_ts = i[2]
-		pt = i[1]
-		#del (a, ts)
+        for i in OF_TEST_FLOWMOD_TS:
+            if i[0] == address:
+                packet_in_ts = i[1]
     except Exception, e:
-	packet_in_ts = None
+        packet_in_ts = None
         return -1
     if packet_in_ts != None:
-	flow_mod_ts = time.time()
-        #del OF_TEST_FLOWMOD_TS[address]
+        flow_mod_ts = time.time()
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
-        if pt == LB_PORTS[0]:
+        if controller_ip == CONTROLLERS_IP[0]:
             CSV_OUTPUT_WRITER1.writerow([lt])
             CSV_OUTPUT_FILE1.flush()
-        if pt == LB_PORTS[1]:
+        if controller_ip == CONTROLLERS_IP[1]:
             CSV_OUTPUT_WRITER2.writerow([lt])
             CSV_OUTPUT_FILE2.flush()
-        if pt == LB_PORTS[2]:
+        if controller_ip == CONTROLLERS_IP[2]:
             CSV_OUTPUT_WRITER3.writerow([lt])
             CSV_OUTPUT_FILE3.flush()
         #LATENCY_MEASURES[controller_port] = [lt] + LATENCY_MEASURES[controller_port][:LATENCY_AVG_MEASURES_NUM-1]
-        print "INFO    OFop latency update "+str(pt)+": " + str(lt)+"s"
+        print "INFO    OFop latency update "+str(controller_ip)+": " + str(lt)+"s"
         return lt
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
     return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),4)
+
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -297,20 +289,18 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 
 
+
 if __name__ == "__main__":
     print '\n\n\n'
-    #FORWARDING_SCHEME = StaticForwarder()
+    FORWARDING_SCHEME = StaticForwarder()
     #FORWARDING_SCHEME = WardropForwarder()
-    FORWARDING_SCHEME = RoundRobinForwarder()
-    proxy = []
-    proxyThread = []
-    for i in range(CONTROLLERS_COUNT):
-        print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[i])
-        proxy.append(ThreadedTCPServer(('', LB_PORTS[i]), OFSouthboundRequestHandler))
-        proxy[i].setListeningPortValue(LB_PORTS[i])
-        proxyThread.append(threading.Thread(target=proxy[i].serve_forever))
-        proxyThread[i].daemon = True
-        proxyThread[i].start()
+    #FORWARDING_SCHEME = RoundRobinForwarder()
+    print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORT)
+    proxy = ThreadedTCPServer(('', LB_PORT), OFSouthboundRequestHandler)
+    proxy.setListeningPortValue(LB_PORT)
+    proxyThread = threading.Thread(target=proxy.serve_forever)
+    proxyThread.daemon = True
+    proxyThread.start()
     print 'INFO    Handling requests, press <Ctrl-C> to quit\n'
     try:
         while True:
@@ -322,5 +312,4 @@ if __name__ == "__main__":
     CSV_OUTPUT_FILE1.close()
     CSV_OUTPUT_FILE2.close()
     CSV_OUTPUT_FILE3.close()
-    for i in range(CONTROLLERS_COUNT):
-        proxy[i].shutdown()
+    proxy.shutdown()
