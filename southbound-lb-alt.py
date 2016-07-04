@@ -23,9 +23,9 @@ CSV_OUTPUT_WRITER1 = csv.writer(CSV_OUTPUT_FILE1)
 CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2)
 CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3)
 LB_PORT = 6663
-CONTROLLERS_PORT = 6633
+CONTROLLERS_PORTS = [6634, 6635]
 CONTROLLERS_COUNT = 2
-CONTROLLERS_IP = ['10.42.0.92', '10.42.0.14', '']
+CONTROLLERS_IP = ['10.42.0.92', '10.42.0.46', '']
 MININET_IP = '127.0.0.1'
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS =  []
@@ -100,7 +100,7 @@ class OpenFlowRequestForwarder(threading.Thread):
     serverListeningPort = 6633
     targetControllerIp = CONTROLLERS_IP[0]
 
-    def __init__(self, client_address, serverListeningPort, targetControllerIp):
+    def __init__(self, client_address, serverListeningPort, targetControllerIp, controllerPort):
         threading.Thread.__init__(self)
         self.client_address = client_address
         self.serverListeningPort = serverListeningPort
@@ -110,7 +110,7 @@ class OpenFlowRequestForwarder(threading.Thread):
               + str(client_address.client_address) + ' to ' + str() + ':' + str(targetControllerIp)
         self.socket_to_odl = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            self.socket_to_odl.connect((targetControllerIp, CONTROLLERS_PORT))
+            self.socket_to_odl.connect((targetControllerIp, controllerPort))
         except Exception, e:
             print e
 
@@ -153,8 +153,8 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
         OFReqForwarders = []
         for i in range(CONTROLLERS_COUNT):
             print 'INFO    Setting OpenFlowRequestHandler socket from ' \
-                  + str(MININET_IP) + ' to ' + str(CONTROLLERS_IP[i]) + ':' + str(CONTROLLERS_PORT)
-            OFReqForwarders.append(OpenFlowRequestForwarder(self, self.server.serverListeningPort, CONTROLLERS_IP[i]))
+                  + str(MININET_IP) + ' to ' + str(CONTROLLERS_IP[i]) + ':' + str(CONTROLLER_PORTS[i])
+            OFReqForwarders.append(OpenFlowRequestForwarder(self, self.server.serverListeningPort, CONTROLLERS_IP[i], CONTROLLER_PORTS[i]))
             OFReqForwarders[i].start()
         try:
             while True:
