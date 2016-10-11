@@ -139,8 +139,7 @@ class OpenFlowRequestForwarder(threading.Thread):
         self.client_address.stop_forwarding()
 
     def write_to_dest(self, data, OFop=0):
-      	#print "RRRRR " + str(self.targetControllerIp)
-	self.socket_to_odl.send(data)
+        self.socket_to_odl.send(data)
 
     def stop_forwarding(self):
         self.socket_to_odl.close()
@@ -166,25 +165,23 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                 if len(data) != 0:
                     ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
                     #print ">>>>>>>>>> received message type " + str(ofop)
-		    if ofop == 10: #on PACKET_IN
-                        address = ParsePacketInRequestForAddress(data)
-			#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
-                        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                        targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
-			if address != '':
-                            OF_TEST_FLOWMOD_TS.append((address, LB_PORTS[targetControllerIndex], time.time()))
-			#OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                if ofop == 10: #on PACKET_IN
+                    address = ParsePacketInRequestForAddress(data)
+                    #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
+                    targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                    if address != '':
+                        OF_TEST_FLOWMOD_TS.append((address, LB_PORTS[targetControllerIndex], time.time()))
+                        #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
                         OFReqForwarders[0].write_to_dest(data, ofop)
                         OFReqForwarders[1].write_to_dest(data, ofop)
                         OFReqForwarders[2].write_to_dest(data, ofop)
-                    else:
-			#targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
-                    	#OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
- 			#print ">>>>>>>>>> writing to " + str(OFReqForwarders[targetControllerIndex].targetControllerIp)
-			OFReqForwarders[0].write_to_dest(data, ofop)
-			OFReqForwarders[1].write_to_dest(data, ofop)
-			OFReqForwarders[2].write_to_dest(data, ofop)
+                else:
+                    #targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
+                    #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                    #print ">>>>>>>>>> writing to " + str(OFReqForwarders[targetControllerIndex].targetControllerIp)
+                    OFReqForwarders[0].write_to_dest(data, ofop)
+                    OFReqForwarders[1].write_to_dest(data, ofop)
+                    OFReqForwarders[2].write_to_dest(data, ofop)
 
         except Exception, e:
             print "ERROR   Exception reading from main socket"
