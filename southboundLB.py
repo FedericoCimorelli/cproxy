@@ -72,15 +72,15 @@ class WardropForwarder():
     def __init__(self):
         print "INFO    Wardrop Forwarder, initialization..."
         for i in range(CONTROLLERS_COUNT):
-            self.probs.append(1/CONTROLLERS_COUNT)
-        print ">>>>>>>>>>>>>>> " + format(self.probs)
+            WardropForwarder.probs.append(1/CONTROLLERS_COUNT)
+        print ">>>>>>>>>>>>>>> " + format(WardropForwarder.probs)
 
     def update(self, controllerIp, controllerNewLatency):
-        self.probs[randint(0, 2)] *= 0.1
-        print 'INFO    Wardrop forwarder, updated probs: ' + format(self.probs)
+        WardropForwarder.probs[randint(0, 2)] *= 0.1
+        print 'INFO    Wardrop forwarder, updated probs: ' + format(WardropForwarder.probs)
 
     def getControllerDestIndex(self, sourcePort):
-        controllerIndex = self.probs.index(min(self.probs))
+        controllerIndex = WardropForwarder.probs.index(min(WardropForwarder.probs))
         print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
         self.update("", 0)
         return
