@@ -279,11 +279,15 @@ def ComputeOFopLatency(address, controller_ip): #controller_port):
     if packet_in_ts != None:
         print ">>>>>>>>>>>>>>>>>>>> 222"
         flow_mod_ts = time.time()
-        del OF_TEST_FLOWMOD_TS[address]
+        print ">>>>>>>>>>>>>>>>>>>> 333"
+        #del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
+        print ">>>>>>>>>>>>>>>>>>>> 444"
         lt = round(lt, 5)
+        print ">>>>>>>>>>>>>>>>>>>> 555"
         CSV_OUTPUT_WRITER1.writerow([lt])
         CSV_OUTPUT_FILE1.flush()
+        print ">>>>>>>>>>>>>>>>>>>> 666"
         # if pt == LB_PORTS[0]:
         #     CSV_OUTPUT_WRITER1.writerow([lt])
         #     CSV_OUTPUT_FILE1.flush()
