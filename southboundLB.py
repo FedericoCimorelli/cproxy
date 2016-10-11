@@ -79,14 +79,16 @@ class WardropForwarder():
             print a
 
     def update(self, controllerIp, controllerNewLatency):
-        WardropForwarder.probs[randint(0, 2)] *= 0.1
-        print 'INFO    Wardrop forwarder, updated probs: ' + format(WardropForwarder.probs)
+        #To be removed
+        WardropForwarder.probs[randint(0, 2)] += 0.1
+        #TODO
+        print 'INFO    Wardrop forwarder, input latency ' +str(controllerNewLatency) +' for ' + str(controllerIp) + ', updated probs: ' + format(WardropForwarder.probs)
 
     def getControllerDestIndex(self, sourcePort):
         controllerIndex = WardropForwarder.probs.index(min(WardropForwarder.probs))
         print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
-        self.update("", 0)
-        return
+        #self.update("", 0)
+        return controllerIndex
 
 
 
@@ -127,6 +129,8 @@ class OpenFlowRequestForwarder(threading.Thread):
         try:
             while True:
                 data = self.socket_to_odl.recv(65565)
+                if len(data) == 0:
+                    raise Exception("endpoint closed")
                 if len(data) != 0:
                     source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                     ofop = ParseRequestForOFop(data, source)
@@ -134,10 +138,8 @@ class OpenFlowRequestForwarder(threading.Thread):
                         address = ParseFlowModRequestForAddress(data)
                         if address != '':
                             latency = ComputeOFopLatency(address, self.serverListeningPort)
-                    #        #if FORWARDING_SCHEME.name == 'wardrop' and latency != -1:
-                    #        #    FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
-                    #if len(data) == 0:
-                    #    raise Exception("endpoint closed")
+                            if FORWARDING_SCHEME.name == 'wardrop':
+                                FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                     self.client_address.write_to_source(data)
         except Exception, e:
             print "ERROR   Exception reading from forwarding socket"
