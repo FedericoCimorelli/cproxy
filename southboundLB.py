@@ -25,7 +25,7 @@ CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3)
 LB_PORTS = [6634] #, 6635, 6636]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 3
-CONTROLLERS_IP = ['10.10.10.61','10.10.10.62','10.10.10.63']
+CONTROLLERS_IP = ['10.10.10.61', '10.10.10.62', '10.10.10.63']
 MININET_IP = '10.10.10.66'
 LATENCY_AVG_MEASURES_NUM = 20
 LATENCY_MEASURES = defaultdict(list)
@@ -112,7 +112,6 @@ class OpenFlowRequestForwarder(threading.Thread):
         try:
             self.socket_to_odl.connect((targetControllerIp, CONTROLLERS_PORT))
         except Exception, e:
-            print "connect 1 >>>>>>>>>>>>>>"
             print e
 
 
@@ -124,11 +123,9 @@ class OpenFlowRequestForwarder(threading.Thread):
                     source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                     ofop = ParseRequestForOFop(data, source)
                     if ofop == 14: #FLOW_MOD
-                        print "Parsing FLOW_MOD msg"
                         address = ParseFlowModRequestForAddress(data)
-                        print "Parsing FLOW_MOD msg from " + str(address)
+                        print ">>>>>>>> Parsing FLOW_MOD msg from " + str(address)
                         if address != '':
-                            print "Computing OF op latency..."
                             latency = ComputeOFopLatency(address, self.serverListeningPort)
                     #        #if FORWARDING_SCHEME.name == 'wardrop' and latency != -1:
                     #        #    FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
@@ -173,10 +170,10 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
                     print ">>>> computing target controller on packet in"
                     targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
-                    print ">>>> computing target controller on packet in: " + str(targetControllerIndex)
                     if address != '':
-                        OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
+                        #OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
                         #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                        OF_TEST_FLOWMOD_TS.append((address, 0, time.time()))
                         OFReqForwarders[0].write_to_dest(data, ofop)
                         OFReqForwarders[1].write_to_dest(data, ofop)
                         OFReqForwarders[2].write_to_dest(data, ofop)
@@ -270,6 +267,7 @@ def ComputeOFopLatency(address, controller_ip): #controller_port):
     #pt = LB_PORTS[0]
     try:
         for i in OF_TEST_FLOWMOD_TS:
+            print ">><>><<<<<<<<< " + format(i)
             if i[0] == address:
                 packet_in_ts = i[2]
                 pt = i[1]
@@ -277,7 +275,9 @@ def ComputeOFopLatency(address, controller_ip): #controller_port):
     except Exception, e:
         packet_in_ts = None
         return -1
+    print ">>>>>>>>>>>>>>>>>>>> 111"
     if packet_in_ts != None:
+        print ">>>>>>>>>>>>>>>>>>>> 222"
         flow_mod_ts = time.time()
         del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
