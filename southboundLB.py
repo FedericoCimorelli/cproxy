@@ -1,3 +1,5 @@
+from __future__ import division
+from random import randint
 ###############################
 ## requirements:             ##
 ## sudo apt-get install mz   ##
@@ -12,7 +14,7 @@ import time
 from collections import defaultdict
 import csv
 #from termcolor import colored
-from random import randint
+
 
 #setup ovs switches according...
 CSV_FILE_NAME = ['output1.csv', 'output2.csv', 'output3.csv']
@@ -73,7 +75,8 @@ class WardropForwarder():
         print "INFO    Wardrop Forwarder, initialization..."
         for i in range(CONTROLLERS_COUNT):
             WardropForwarder.probs.append(1/CONTROLLERS_COUNT)
-        print ">>>>>>>>>>>>>>> " + format(WardropForwarder.probs)
+            a = 1/CONTROLLERS_COUNT
+            print a
 
     def update(self, controllerIp, controllerNewLatency):
         WardropForwarder.probs[randint(0, 2)] *= 0.1
