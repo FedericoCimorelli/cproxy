@@ -177,11 +177,11 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
                     if address != '':
                         #OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
-                        #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                        OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
                         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[0], time.time()))
-                        OFReqForwarders[0].write_to_dest(data, ofop)
-                        OFReqForwarders[1].write_to_dest(data, ofop)
-                        OFReqForwarders[2].write_to_dest(data, ofop)
+                        #OFReqForwarders[0].write_to_dest(data, ofop)
+                        #OFReqForwarders[1].write_to_dest(data, ofop)
+                        #OFReqForwarders[2].write_to_dest(data, ofop)
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
