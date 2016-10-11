@@ -76,7 +76,6 @@ class WardropForwarder():
         for i in range(CONTROLLERS_COUNT):
             WardropForwarder.probs.append(1/CONTROLLERS_COUNT)
             a = 1/CONTROLLERS_COUNT
-            print a
 
     def update(self, controllerIp, controllerNewLatency):
         #To be removed
@@ -89,7 +88,6 @@ class WardropForwarder():
         print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
         #self.update("", 0)
         return controllerIndex
-
 
 
 
@@ -138,7 +136,7 @@ class OpenFlowRequestForwarder(threading.Thread):
                         address = ParseFlowModRequestForAddress(data)
                         if address != '':
                             latency = ComputeOFopLatency(address, self.serverListeningPort)
-                            if FORWARDING_SCHEME.name == 'wardrop':
+                            if FORWARDING_SCHEME.name == 'wardrop' and latency!=-1:
                                 FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                     self.client_address.write_to_source(data)
         except Exception, e:
