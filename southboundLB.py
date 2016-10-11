@@ -12,7 +12,7 @@ import time
 from collections import defaultdict
 import csv
 #from termcolor import colored
-
+from random import randint
 
 #setup ovs switches according...
 CSV_FILE_NAME = ['output1.csv', 'output2.csv', 'output3.csv']
@@ -70,15 +70,22 @@ class WardropForwarder():
     probs = []
 
     def __init__(self):
+        print "INFO    Wardrop Forwarder, initialization..."
         for i in range(CONTROLLERS_COUNT):
             self.probs.append(1/CONTROLLERS_COUNT)
+        print ">>>>>>>>>>>>>>> " + format(self.probs)
 
     def update(self, controllerIp, controllerNewLatency):
-        #TODO
-        print 'INFO    Wardrop forwarder, updated probs: ' + str(self.probs)
+        self.probs[randint(0, 2)] *= 0.1
+        print 'INFO    Wardrop forwarder, updated probs: ' + format(self.probs)
 
     def getControllerDestIndex(self, sourcePort):
-        return self.probs.index(min(self.probs))
+        controllerIndex = self.probs.index(min(self.probs))
+        print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
+        self.update("", 0)
+        return
+
+
 
 
 def getStaticControllerIndexFromOFport(port):
@@ -88,8 +95,6 @@ def getStaticControllerIndexFromOFport(port):
         return 1
     if port == LB_PORTS[2]:
         return 2
-
-
 
 
 
@@ -159,11 +164,10 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
         try:
             while True:
                 data = self.request.recv(65565)
-                #if len(data) == 0:
-                #    raise Exception("endpoint closed")
+                if len(data) == 0:
+                    raise Exception("endpoint closed")
                 if len(data) != 0:
                     ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
-                    #print ">>>>>>>>>> received message type " + str(ofop)
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
                     #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
@@ -176,9 +180,6 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                         OFReqForwarders[1].write_to_dest(data, ofop)
                         OFReqForwarders[2].write_to_dest(data, ofop)
                 else:
-                    #targetControllerIndex = getStaticControllerIndexFromOFport(self.server.serverListeningPort)
-                    #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
-                    #print ">>>>>>>>>> writing to " + str(OFReqForwarders[targetControllerIndex].targetControllerIp)
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
                     OFReqForwarders[2].write_to_dest(data, ofop)
@@ -312,23 +313,12 @@ if __name__ == "__main__":
     #FORWARDING_SCHEME = RoundRobinForwarder()
     proxy = []
     proxyThread = []
-
-    #for i in range(CONTROLLERS_COUNT):
-    #    print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[i])
-    #    proxy.append(ThreadedTCPServer(('', LB_PORTS[i]), OFSouthboundRequestHandler))
-    #    proxy[i].setListeningPortValue(LB_PORTS[i])
-    #    proxyThread.append(threading.Thread(target=proxy[i].serve_forever))
-    #    proxyThread[i].daemon = True
-    #    proxyThread[i].start()
-
     print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[0])
     proxy.append(ThreadedTCPServer(('', LB_PORTS[0]), OFSouthboundRequestHandler))
     proxy[0].setListeningPortValue(LB_PORTS[0])
     proxyThread.append(threading.Thread(target=proxy[0].serve_forever))
     proxyThread[0].daemon = True
     proxyThread[0].start()
-
-
     print 'INFO    Handling requests, press <Ctrl-C> to quit\n'
     try:
         while True:
@@ -341,5 +331,3 @@ if __name__ == "__main__":
     CSV_OUTPUT_FILE2.close()
     CSV_OUTPUT_FILE3.close()
     proxy[0].shutdown()
-    #for i in range(CONTROLLERS_COUNT):
-    #    proxy[i].shutdown()
