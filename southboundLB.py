@@ -123,10 +123,13 @@ class OpenFlowRequestForwarder(threading.Thread):
                 if len(data) != 0:
                     source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                     ofop = ParseRequestForOFop(data, source)
-                    #if ofop == 14: #FLOW_MOD
-                    #    address = ParseFlowModRequestForAddress(data)
-                    #    if address != '':
-                    #        latency = ComputeOFopLatency(address, self.serverListeningPort)
+                    if ofop == 14: #FLOW_MOD
+                        print "Parsing FLOW_MOD msg"
+                        address = ParseFlowModRequestForAddress(data)
+                        print "Parsing FLOW_MOD msg from " + str(address)
+                        if address != '':
+                            print "Computing OF op latency..."
+                            latency = ComputeOFopLatency(address, self.serverListeningPort)
                     #        #if FORWARDING_SCHEME.name == 'wardrop' and latency != -1:
                     #        #    FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                     #if len(data) == 0:
@@ -168,9 +171,11 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
                     #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
+                    print ">>>> computing target controller on packet in"
                     targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                    print ">>>> computing target controller on packet in: " + str(targetControllerIndex)
                     if address != '':
-                        OF_TEST_FLOWMOD_TS.append((address, LB_PORTS[targetControllerIndex], time.time()))
+                        OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
                         #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
                         OFReqForwarders[0].write_to_dest(data, ofop)
                         OFReqForwarders[1].write_to_dest(data, ofop)
@@ -259,32 +264,35 @@ def ParsePacketInRequestForAddress(request):
     return ''
 
 
-def ComputeOFopLatency(address, controller_port):
+def ComputeOFopLatency(address, controller_ip): #controller_port):
     packet_in_ts = None
-    pt = LB_PORTS[0]
+    pt = CONTROLLERS_IP[0]
+    #pt = LB_PORTS[0]
     try:
-	for i in OF_TEST_FLOWMOD_TS:
-	    if i[0] == address:
-		packet_in_ts = i[2]
-		pt = i[1]
-		#del (a, ts)
+        for i in OF_TEST_FLOWMOD_TS:
+            if i[0] == address:
+                packet_in_ts = i[2]
+                pt = i[1]
+                #del (a, ts)
     except Exception, e:
-	packet_in_ts = None
+        packet_in_ts = None
         return -1
     if packet_in_ts != None:
-	flow_mod_ts = time.time()
-        #del OF_TEST_FLOWMOD_TS[address]
+        flow_mod_ts = time.time()
+        del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
-        if pt == LB_PORTS[0]:
-            CSV_OUTPUT_WRITER1.writerow([lt])
-            CSV_OUTPUT_FILE1.flush()
-        if pt == LB_PORTS[1]:
-            CSV_OUTPUT_WRITER2.writerow([lt])
-            CSV_OUTPUT_FILE2.flush()
-        if pt == LB_PORTS[2]:
-            CSV_OUTPUT_WRITER3.writerow([lt])
-            CSV_OUTPUT_FILE3.flush()
+        CSV_OUTPUT_WRITER1.writerow([lt])
+        CSV_OUTPUT_FILE1.flush()
+        # if pt == LB_PORTS[0]:
+        #     CSV_OUTPUT_WRITER1.writerow([lt])
+        #     CSV_OUTPUT_FILE1.flush()
+        # if pt == LB_PORTS[1]:
+        #     CSV_OUTPUT_WRITER2.writerow([lt])
+        #     CSV_OUTPUT_FILE2.flush()
+        # if pt == LB_PORTS[2]:
+        #     CSV_OUTPUT_WRITER3.writerow([lt])
+        #     CSV_OUTPUT_FILE3.flush()
         #LATENCY_MEASURES[controller_port] = [lt] + LATENCY_MEASURES[controller_port][:LATENCY_AVG_MEASURES_NUM-1]
         print "INFO    OFop latency update "+str(pt)+": " + str(lt)+"s"
         return lt
