@@ -52,7 +52,7 @@ def initWardropForwarder():
 def update():
     print "INFO    Wardrop Forwarder, req rate vector values " + format(req_rate)
     sigma = wardrop_threshold/((CONTROLLERS_COUNT-1)*req_rate_tot*mu)
-    print "INFO    Wardrop Forwarder, sigma=" + str(sigma)
+    #print "INFO    Wardrop Forwarder, sigma=" + str(sigma)
     for i in range(CONTROLLERS_COUNT):
         for j in range(CONTROLLERS_COUNT):
             if i!=j:    #6 case
@@ -280,6 +280,7 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
+    print ">>>>>>>for "+str(controller_ip)+">>>>>"+format(LATENCY_MEASURES)
     if len(LATENCY_MEASURES[controller_ip])>0 :
         return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
