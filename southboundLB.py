@@ -56,7 +56,7 @@ def update():
     for i in range(CONTROLLERS_COUNT):
         for j in range(CONTROLLERS_COUNT):
             if i!=j:    #6 case
-                l = ComputeOFopAvgLatency(CONTROLLERS_IP[i]) - ComputeOFopAvgLatency(CONTROLLERS_IP[j])
+                l = ComputeOFopAvgLatency(i) - ComputeOFopAvgLatency(j)
                 print "INFO    Wardrop Forwarder, l"+str(CONTROLLERS_IP[i])+"-l"+str(CONTROLLERS_IP[j])+"="+str(l)
                 if(l>wardrop_threshold):
                     req_rate_migr = req_rate[i]*sigma*l
@@ -160,16 +160,10 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
-                    #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
-                    #targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
-                        #OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
                         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[0], time.time()))
-                        #OFReqForwarders[0].write_to_dest(data, ofop)
-                        #OFReqForwarders[1].write_to_dest(data, ofop)
-                        #OFReqForwarders[2].write_to_dest(data, ofop)
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
@@ -270,16 +264,18 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
+            LATENCY_MEASURES[0] = [lt] + LATENCY_MEASURES[0][:LATENCY_AVG_MEASURES_NUM - 1]
             CSV_OUTPUT_WRITER1.writerow([lt])
             CSV_OUTPUT_FILE1.flush()
         if pt == CONTROLLERS_IP[1]:
+            LATENCY_MEASURES[1] = [lt] + LATENCY_MEASURES[1][:LATENCY_AVG_MEASURES_NUM - 1]
             CSV_OUTPUT_WRITER2.writerow([lt])
             CSV_OUTPUT_FILE2.flush()
         if pt == CONTROLLERS_IP[2]:
+            LATENCY_MEASURES[2] = [lt] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
             CSV_OUTPUT_WRITER3.writerow([lt])
             CSV_OUTPUT_FILE3.flush()
-        LATENCY_MEASURES[controller_ip] = [lt] + LATENCY_MEASURES[controller_ip][:LATENCY_AVG_MEASURES_NUM-1]
-        print "INFO    OFop latency update "+str(pt)+": " + str(lt)+"s"
+        print "INFO    OFop latency update "+str(pt)+" " + str(lt)+" s"
         return lt
     return -1
 
