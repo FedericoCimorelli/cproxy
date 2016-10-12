@@ -37,7 +37,7 @@ OF_REQ_FORWARDERS = []
 
 #WARDROP...
 req_rate_tot = 1
-req_rate = [0.9, 0.05, 0.05]  #tot reqs rate
+req_rate = [0.66, 0.66, 0.66]  #tot reqs rate
 probs = [1, 0.06, 0.04]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
@@ -72,7 +72,7 @@ def update():
 
 
 def getControllerDestIndex():
-    controllerIndex = probs.index(min(probs))
+    controllerIndex = probs.index(max(probs))
     print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
     return controllerIndex
 
