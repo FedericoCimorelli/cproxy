@@ -280,7 +280,7 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
-    print ">>>>>>>for "+str(controller_ip)+">>>>>"+format(LATENCY_MEASURES)
+    #print ">>>>>>>for "+str(controller_ip)+">>>>>"+format(LATENCY_MEASURES)
     if len(LATENCY_MEASURES[controller_ip])>0 :
         return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
