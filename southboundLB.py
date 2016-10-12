@@ -49,7 +49,7 @@ def initWardropForwarder():
     update()
 
 
-def update(self):
+def update():
     print "INFO    Wardrop Forwarder, req rate vector values " + format(req_rate)
     sigma = wardrop_threshold/((CONTROLLERS_COUNT-1)*req_rate_tot*mu)
     print "INFO    Wardrop Forwarder, sigma=" + str(sigma)
@@ -74,7 +74,6 @@ def update(self):
 def getControllerDestIndex():
     controllerIndex = probs.index(min(probs))
     print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
-    # self.update("", 0)
     return controllerIndex
 
 
@@ -285,7 +284,9 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
-    return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
+    if len(LATENCY_MEASURES[controller_ip])>0 :
+        return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
+    return 0
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -303,6 +304,7 @@ if __name__ == "__main__":
     #FORWARDING_SCHEME = StaticForwarder()
     #FORWARDING_SCHEME = WardropForwarder()
     #FORWARDING_SCHEME = RoundRobinForwarder()
+    initWardropForwarder()
     proxy = []
     proxyThread = []
     print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[0])
