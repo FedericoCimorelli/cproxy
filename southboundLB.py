@@ -1,10 +1,5 @@
 from __future__ import division
 from random import randint
-###############################
-## requirements:             ##
-## sudo apt-get install mz   ##
-###############################
-
 import socket
 import SocketServer
 import threading
@@ -15,8 +10,12 @@ from collections import defaultdict
 import csv
 #from termcolor import colored
 
+###############################
+## requirements:             ##
+## sudo apt-get install mz   ##
+###############################
 
-#setup ovs switches according...
+
 CSV_FILE_NAME = ['output1.csv', 'output2.csv', 'output3.csv']
 CSV_OUTPUT_FILE1 = open(CSV_FILE_NAME[0], 'wb')
 CSV_OUTPUT_FILE2 = open(CSV_FILE_NAME[1], 'wb')
@@ -24,70 +23,59 @@ CSV_OUTPUT_FILE3 = open(CSV_FILE_NAME[2], 'wb')
 CSV_OUTPUT_WRITER1 = csv.writer(CSV_OUTPUT_FILE1)
 CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2)
 CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3)
-LB_PORTS = [6634] #, 6635, 6636]
+LB_PORTS = [6634]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 3
 CONTROLLERS_IP = ['10.10.10.61', '10.10.10.62', '10.10.10.63']
 MININET_IP = '10.10.10.66'
-LATENCY_AVG_MEASURES_NUM = 20
+LATENCY_AVG_MEASURES_NUM = 5
 LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS =  []
 OF_TEST_FLOWMOD_LATENCY = []
 OF_REQ_FORWARDERS = []
-FORWARDING_SCHEME = None #Set it in main method
+#FORWARDING_SCHEME = None #Set it in main method
+
+#WARDROP...
+req_rate_tot = 1
+req_rate = [1, 0, 0]  #tot reqs rate
+probs = [1, 0, 0]   #tot =1
+wardrop_threshold = 0.05
+mu = 0.5
+sigma = 0
+wardrop_loop_time = 1 #1 sec
+
+def initWardropForwarder():
+    print "INFO    Wardrop Forwarder, initialization..."
+    update()
 
 
-
-class StaticForwarder():
-    name = 'static'
-
-    def __init__(self):
-        pass
-
-    def getControllerDestIndex(self, sourcePort):
-        if sourcePort == LB_PORTS[0]:
-            return 0
-        if sourcePort == LB_PORTS[1]:
-            return 1
-        if sourcePort == LB_PORTS[2]:
-            return 2
-
-
-
-class RoundRobinForwarder():
-    name = 'roundrobin'
-    last_index = 0
-
-    def __init__(self):
-        RoundRobinForwarder.last_index = 1
-
-    def getControllerDestIndex(self, sourcePort):
-        RoundRobinForwarder.last_index = (RoundRobinForwarder.last_index+1)%CONTROLLERS_COUNT
-	return RoundRobinForwarder.last_index
+def update(self):
+    print "INFO    Wardrop Forwarder, req rate vector values " + format(req_rate)
+    sigma = wardrop_threshold/((CONTROLLERS_COUNT-1)*req_rate_tot*mu)
+    print "INFO    Wardrop Forwarder, sigma=" + str(sigma)
+    for i in range(CONTROLLERS_COUNT):
+        for j in range(CONTROLLERS_COUNT):
+            if i!=j:    #6 case
+                l = ComputeOFopAvgLatency(CONTROLLERS_IP[i]) - ComputeOFopAvgLatency(CONTROLLERS_IP[j])
+                print "INFO    Wardrop Forwarder, l"+str(CONTROLLERS_IP[i])+"-l"+str(CONTROLLERS_IP[j])+"="+str(l)
+                if(l>wardrop_threshold):
+                    req_rate_migr = req_rate[i]*sigma*l
+                    print "INFO    Wardrop Forwarder, migrating "+str(req_rate_migr)+" reqs rate from "+str(CONTROLLERS_IP[i])+" to "+str(CONTROLLERS_IP[j])
+                    req_rate[i] -= req_rate_migr
+                    req_rate[j] -= req_rate_migr
+                    print "INFO    Wardrop Forwarder, new req rate vector values " + format(req_rate)
+                    probs[0] = req_rate[0]
+                    probs[1] = req_rate[1]
+                    probs[2] = req_rate[2]
+                    print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector"
+    threading.Timer(wardrop_loop_time, update).start()
 
 
-
-class WardropForwarder():
-    name = 'wardrop'
-    probs = []
-
-    def __init__(self):
-        print "INFO    Wardrop Forwarder, initialization..."
-        for i in range(CONTROLLERS_COUNT):
-            WardropForwarder.probs.append(1/CONTROLLERS_COUNT)
-            a = 1/CONTROLLERS_COUNT
-
-    def update(self, controllerIp, controllerNewLatency):
-        #To be removed
-        WardropForwarder.probs[randint(0, 2)] += 0.1
-        #TODO
-        print 'INFO    Wardrop forwarder, input latency ' +str(controllerNewLatency) +' for ' + str(controllerIp) + ', updated probs: ' + format(WardropForwarder.probs)
-
-    def getControllerDestIndex(self, sourcePort):
-        controllerIndex = WardropForwarder.probs.index(min(WardropForwarder.probs))
-        print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
-        #self.update("", 0)
-        return controllerIndex
+def getControllerDestIndex():
+    controllerIndex = probs.index(min(probs))
+    print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
+    # self.update("", 0)
+    return controllerIndex
 
 
 
@@ -135,9 +123,9 @@ class OpenFlowRequestForwarder(threading.Thread):
                     if ofop == 14: #FLOW_MOD
                         address = ParseFlowModRequestForAddress(data)
                         if address != '':
-                            latency = ComputeOFopLatency(address, self.serverListeningPort)
-                            if FORWARDING_SCHEME.name == 'wardrop' and latency!=-1:
-                                FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
+                            latency = UpdateOFopLatency(address, self.serverListeningPort)
+                            #if FORWARDING_SCHEME.name == 'wardrop' and latency!=-1:
+                            #    FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
                     self.client_address.write_to_source(data)
         except Exception, e:
             print "ERROR   Exception reading from forwarding socket"
@@ -174,7 +162,8 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
                     #!!!!!!!!!!!!!APPLY HERE THE LB NOW!!!!!!!!!!!!!!
-                    targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                    #targetControllerIndex = FORWARDING_SCHEME.getControllerDestIndex(self.server.serverListeningPort)
+                    targetControllerIndex = getControllerDestIndex()
                     if address != '':
                         #OF_TEST_FLOWMOD_TS.append((address, targetControllerIndex, time.time()))
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
@@ -263,7 +252,7 @@ def ParsePacketInRequestForAddress(request):
     return ''
 
 
-def ComputeOFopLatency(address, controller_ip): #controller_port):
+def UpdateOFopLatency(address, controller_ip): #controller_port):
     packet_in_ts = None
     pt = CONTROLLERS_IP[0]
     #pt = LB_PORTS[0]
@@ -290,13 +279,13 @@ def ComputeOFopLatency(address, controller_ip): #controller_port):
         if pt == CONTROLLERS_IP[2]:
             CSV_OUTPUT_WRITER3.writerow([lt])
             CSV_OUTPUT_FILE3.flush()
-        #LATENCY_MEASURES[controller_port] = [lt] + LATENCY_MEASURES[controller_port][:LATENCY_AVG_MEASURES_NUM-1]
+        LATENCY_MEASURES[controller_ip] = [lt] + LATENCY_MEASURES[controller_ip][:LATENCY_AVG_MEASURES_NUM-1]
         print "INFO    OFop latency update "+str(pt)+": " + str(lt)+"s"
         return lt
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
-    return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),4)
+    return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -312,7 +301,7 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 if __name__ == "__main__":
     print '\n\n\n'
     #FORWARDING_SCHEME = StaticForwarder()
-    FORWARDING_SCHEME = WardropForwarder()
+    #FORWARDING_SCHEME = WardropForwarder()
     #FORWARDING_SCHEME = RoundRobinForwarder()
     proxy = []
     proxyThread = []
