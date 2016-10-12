@@ -62,7 +62,7 @@ def update():
                     req_rate_migr = req_rate[i]*sigma*l
                     print "INFO    Wardrop Forwarder, migrating "+str(req_rate_migr)+" reqs rate from "+str(CONTROLLERS_IP[i])+" to "+str(CONTROLLERS_IP[j])
                     req_rate[i] -= req_rate_migr
-                    req_rate[j] -= req_rate_migr
+                    req_rate[j] += req_rate_migr
                     print "INFO    Wardrop Forwarder, new req rate vector values " + format(req_rate)
                     probs[0] = req_rate[0]
                     probs[1] = req_rate[1]
@@ -163,7 +163,7 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
-                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[0], time.time()))
+                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
