@@ -37,8 +37,8 @@ OF_REQ_FORWARDERS = []
 
 #WARDROP...
 req_rate_tot = 1
-req_rate = [1, 0, 0]  #tot reqs rate
-probs = [1, 0, 0]   #tot =1
+req_rate = [0.9, 0.05, 0.05]  #tot reqs rate
+probs = [1, 0.06, 0.04]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
 sigma = 0
