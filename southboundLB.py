@@ -52,11 +52,9 @@ wardrop_loop_time = 1 #1 sec
 def initWardropForwarder():
     print "INFO    Wardrop Forwarder, initialization..."
     update()
-    measureControllersLatency()
 
 
 def measureControllersLatency():
-    print "AAAAAAAAAAAAAAAAa"
     lt1 = 0
     lt2 = 0
     lt3 = 0
@@ -76,7 +74,7 @@ def measureControllersLatency():
         print "ERROR    Controllers latency error"
         print e
     print "INFO    Controllers latency update " + str(lt1)+"s "+str(lt2)+"s "+str(lt3)+"s "
-    threading.Timer(latency_loop_time, update).start()
+    #threading.Timer(latency_loop_time, update).start()
 
 
 def update():
@@ -98,6 +96,7 @@ def update():
                     probs[1] = req_rate[1]
                     probs[2] = req_rate[2]
                     print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector"
+    measureControllersLatency()
     threading.Timer(wardrop_loop_time, update).start()
 
 
