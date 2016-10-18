@@ -68,7 +68,7 @@ def measureControllersLatency():
         r = requests.get('http://' + CONTROLLERS_IP[2] + ':8181/restconf/config/config:services/')
         lt3 = round(r.elapsed.total_seconds(), 5)
         LATENCY_MEASURES[2] = [lt3] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
-        CSV_OUTPUT_WRITER_C_LATENCY.writerow([lt1 + " " + lt2 + " " + lt3])
+        CSV_OUTPUT_WRITER_C_LATENCY.writerow([str(lt1) + " " + str(lt2) + " " + str(lt3)])
         CSV_OUTPUT_C_LATENCY.flush()
     except Exception, e:
         print "ERROR    Controllers latency error"
