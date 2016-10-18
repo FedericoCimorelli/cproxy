@@ -7,6 +7,7 @@ import requests
 import binascii
 from time import sleep
 import time
+import random
 from collections import defaultdict
 import csv
 #from termcolor import colored
@@ -101,7 +102,16 @@ def update():
 
 
 def getControllerDestIndex():
-    controllerIndex = probs.index(max(probs))
+    #controllerIndex = probs.index(max(probs))
+    rnd = random.random()
+    controllerIndex = 0
+    if rnd <= probs[0]:
+        controllerIndex = 0
+    else:
+        if rnd <= probs[0] + probs[1]:
+            controllerIndex = 1
+        else:
+            controllerIndex = 2
     print "INFO    Wardrop forwarder, controller index " + str(controllerIndex)
     return controllerIndex
 
