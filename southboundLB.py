@@ -39,8 +39,8 @@ OF_REQ_FORWARDERS = []
 #FORWARDING_SCHEME = None #Set it in main method
 
 #WARDROP...
-req_rate_tot = 4
-req_rate = [2.5, 1, 0.5]  #tot reqs rate
+req_rate_tot = 3
+req_rate = [1.5, 1, 0.5]  #tot reqs rate
 probs = [0.9, 0.06, 0.04]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
@@ -85,17 +85,17 @@ def update():
         for j in range(CONTROLLERS_COUNT):
             if i!=j:    #6 case
                 l = ComputeOFopAvgLatency(i) - ComputeOFopAvgLatency(j)
-                print "INFO    Wardrop Forwarder, l"+str(CONTROLLERS_IP[i])+"-l"+str(CONTROLLERS_IP[j])+"="+str(l)
+                #print "INFO    Wardrop Forwarder, l"+str(CONTROLLERS_IP[i])+"-l"+str(CONTROLLERS_IP[j])+"="+str(l)
                 if(l>wardrop_threshold):
                     req_rate_migr = req_rate[i]*sigma*l
                     print "INFO    Wardrop Forwarder, migrating "+str(req_rate_migr)+" reqs rate from "+str(CONTROLLERS_IP[i])+" to "+str(CONTROLLERS_IP[j])
                     req_rate[i] -= req_rate_migr
                     req_rate[j] += req_rate_migr
                     print "INFO    Wardrop Forwarder, new req rate vector values " + format(req_rate)
-                    probs[0] = req_rate[0]
-                    probs[1] = req_rate[1]
-                    probs[2] = req_rate[2]
-                    print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector"
+                    probs[0] = req_rate[0]/req_rate_tot
+                    probs[1] = req_rate[1]/req_rate_tot
+                    probs[2] = req_rate[2]/req_rate_tot
+                    print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector" + format(probs)
     measureControllersLatency()
     threading.Timer(wardrop_loop_time, update).start()
 
