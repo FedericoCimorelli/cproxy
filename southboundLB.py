@@ -3,6 +3,7 @@ from random import randint
 import socket
 import SocketServer
 import threading
+import requests
 import binascii
 from time import sleep
 import time
@@ -16,13 +17,15 @@ import csv
 ###############################
 
 
-CSV_FILE_NAME = ['output1.csv', 'output2.csv', 'output3.csv']
-CSV_OUTPUT_FILE1 = open(CSV_FILE_NAME[0], 'wb')
-CSV_OUTPUT_FILE2 = open(CSV_FILE_NAME[1], 'wb')
-CSV_OUTPUT_FILE3 = open(CSV_FILE_NAME[2], 'wb')
-CSV_OUTPUT_WRITER1 = csv.writer(CSV_OUTPUT_FILE1)
-CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2)
-CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3)
+#CSV_FILE_NAME = ['output.csv', 'output2.csv', 'output3.csv']
+CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
+CSV_OUTPUT_FLOWMOD_LATENCY = open('flowmod_latency.csv', 'wb')
+#CSV_OUTPUT_FILE2 = open(CSV_FILE_NAME[1], 'wb')
+#CSV_OUTPUT_FILE3 = open(CSV_FILE_NAME[2], 'wb')
+CSV_OUTPUT_WRITER_C_LATENCY = csv.writer(CSV_OUTPUT_C_LATENCY, dialect="excel")
+CSV_OUTPUT_WRITER_FLOWMOD_LATENCY = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY, dialect="excel")
+#CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2, dialect="excel")
+#CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3, dialect="excel")
 LB_PORTS = [6634]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 3
@@ -42,11 +45,36 @@ probs = [1, 0.06, 0.04]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
 sigma = 0
+latency_loop_time = 1 #1 sec
 wardrop_loop_time = 1 #1 sec
+
 
 def initWardropForwarder():
     print "INFO    Wardrop Forwarder, initialization..."
     update()
+    measureControllersLatency()
+
+
+def measureControllersLatency():
+    lt1 = 0
+    lt2 = 0
+    lt3 = 0
+    try:
+        r = requests.get('http://' + CONTROLLERS_IP[0] + ':8181/restconf/config/config:services/')
+        lt1 = round(r.elapsed.total_seconds(), 5)
+        LATENCY_MEASURES[0] = [lt1] + LATENCY_MEASURES[0][:LATENCY_AVG_MEASURES_NUM - 1]
+        r = requests.get('http://' + CONTROLLERS_IP[1] + ':8181/restconf/config/config:services/')
+        lt2 = round(r.elapsed.total_seconds(), 5)
+        LATENCY_MEASURES[1] = [lt2] + LATENCY_MEASURES[1][:LATENCY_AVG_MEASURES_NUM - 1]
+        r = requests.get('http://' + CONTROLLERS_IP[2] + ':8181/restconf/config/config:services/')
+        lt3 = round(r.elapsed.total_seconds(), 5)
+        LATENCY_MEASURES[2] = [lt3] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
+        CSV_OUTPUT_WRITER_C_LATENCY.writerow([lt1 + " " + lt2 + " " + lt3])
+        CSV_OUTPUT_C_LATENCY.flush()
+    except Exception, e:
+        print e
+    print "INFO    Controllers latency update " + str(lt1)+"s "+str(lt2)+"s "+str(lt3)+"s "
+    threading.Timer(latency_loop_time, update).start()
 
 
 def update():
@@ -264,17 +292,21 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
-            LATENCY_MEASURES[0] = [lt] + LATENCY_MEASURES[0][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER1.writerow([lt])
-            CSV_OUTPUT_FILE1.flush()
+            #LATENCY_MEASURES[0] = [lt] + LATENCY_MEASURES[0][:LATENCY_AVG_MEASURES_NUM - 1]
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow([lt + " - -"])
+            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
         if pt == CONTROLLERS_IP[1]:
-            LATENCY_MEASURES[1] = [lt] + LATENCY_MEASURES[1][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER2.writerow([lt])
-            CSV_OUTPUT_FILE2.flush()
+            #LATENCY_MEASURES[1] = [lt] + LATENCY_MEASURES[1][:LATENCY_AVG_MEASURES_NUM - 1]
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- " + lt + " -"])
+            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
+            #CSV_OUTPUT_WRITER2.writerow([lt])
+            #CSV_OUTPUT_FILE2.flush()
         if pt == CONTROLLERS_IP[2]:
-            LATENCY_MEASURES[2] = [lt] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER3.writerow([lt])
-            CSV_OUTPUT_FILE3.flush()
+            #LATENCY_MEASURES[2] = [lt] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- - " + lt])
+            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
+            #CSV_OUTPUT_WRITER3.writerow([lt])
+            #CSV_OUTPUT_FILE3.flush()
         print "INFO    OFop latency update "+str(pt)+" " + str(lt)+" s"
         return lt
     return -1
@@ -284,6 +316,7 @@ def ComputeOFopAvgLatency(controller_ip):
     if len(LATENCY_MEASURES[controller_ip])>0 :
         return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
+
 
 
 class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
@@ -318,7 +351,8 @@ if __name__ == "__main__":
         pass
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
-    CSV_OUTPUT_FILE1.close()
-    CSV_OUTPUT_FILE2.close()
-    CSV_OUTPUT_FILE3.close()
+    CSV_OUTPUT_C_LATENCY.close()
+    CSV_OUTPUT_FLOWMOD_LATENCY.close()
+    #CSV_OUTPUT_FILE2.close()
+    #CSV_OUTPUT_FILE3.close()
     proxy[0].shutdown()
