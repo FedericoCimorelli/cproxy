@@ -56,6 +56,7 @@ def initWardropForwarder():
 
 
 def measureControllersLatency():
+    print "AAAAAAAAAAAAAAAAa"
     lt1 = 0
     lt2 = 0
     lt3 = 0
@@ -72,13 +73,14 @@ def measureControllersLatency():
         CSV_OUTPUT_WRITER_C_LATENCY.writerow([lt1 + " " + lt2 + " " + lt3])
         CSV_OUTPUT_C_LATENCY.flush()
     except Exception, e:
+        print "ERROR    Controllers latency error"
         print e
     print "INFO    Controllers latency update " + str(lt1)+"s "+str(lt2)+"s "+str(lt3)+"s "
     threading.Timer(latency_loop_time, update).start()
 
 
 def update():
-    print "INFO    Wardrop Forwarder, req rate vector values " + format(req_rate)
+    #print "INFO    Wardrop Forwarder, req rate vector values " + format(req_rate)
     sigma = wardrop_threshold/((CONTROLLERS_COUNT-1)*req_rate_tot*mu)
     #print "INFO    Wardrop Forwarder, sigma=" + str(sigma)
     for i in range(CONTROLLERS_COUNT):
@@ -293,17 +295,17 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
             #LATENCY_MEASURES[0] = [lt] + LATENCY_MEASURES[0][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow([lt + " - -"])
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow([str(lt) + " - -"])
             CSV_OUTPUT_FLOWMOD_LATENCY.flush()
         if pt == CONTROLLERS_IP[1]:
             #LATENCY_MEASURES[1] = [lt] + LATENCY_MEASURES[1][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- " + lt + " -"])
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- " + str(lt) + " -"])
             CSV_OUTPUT_FLOWMOD_LATENCY.flush()
             #CSV_OUTPUT_WRITER2.writerow([lt])
             #CSV_OUTPUT_FILE2.flush()
         if pt == CONTROLLERS_IP[2]:
             #LATENCY_MEASURES[2] = [lt] + LATENCY_MEASURES[2][:LATENCY_AVG_MEASURES_NUM - 1]
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- - " + lt])
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- - " + str(lt)])
             CSV_OUTPUT_FLOWMOD_LATENCY.flush()
             #CSV_OUTPUT_WRITER3.writerow([lt])
             #CSV_OUTPUT_FILE3.flush()
