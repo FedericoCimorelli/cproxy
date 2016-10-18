@@ -39,9 +39,9 @@ OF_REQ_FORWARDERS = []
 #FORWARDING_SCHEME = None #Set it in main method
 
 #WARDROP...
-req_rate_tot = 1
-req_rate = [0.66, 0.66, 0.66]  #tot reqs rate
-probs = [1, 0.06, 0.04]   #tot =1
+req_rate_tot = 4
+req_rate = [2.5, 1, 0.5]  #tot reqs rate
+probs = [0.9, 0.06, 0.04]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
 sigma = 0
