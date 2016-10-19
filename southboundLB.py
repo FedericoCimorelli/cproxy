@@ -289,11 +289,11 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
-            OF_TEST_FLOWMOD_TS.append((str(lt), "", ""))
+            OF_TEST_FLOWMOD_LATENCY.append((str(lt), "", ""))
         if pt == CONTROLLERS_IP[1]:
-            OF_TEST_FLOWMOD_TS.append(("", str(lt), ""))
+            OF_TEST_FLOWMOD_LATENCY.append(("", str(lt), ""))
         if pt == CONTROLLERS_IP[2]:
-            OF_TEST_FLOWMOD_TS.append(("", "", str(lt)))
+            OF_TEST_FLOWMOD_LATENCY.append(("", "", str(lt)))
         print "INFO    OFop latency update "+str(pt)+" " + str(lt)+" s"
         return lt
     return -1
@@ -335,7 +335,8 @@ if __name__ == "__main__":
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
     CSV_OUTPUT_C_LATENCY.close()
-    CSV_OUTPUT_FLOWMOD_LATENCY.write(str(OF_TEST_FLOWMOD_TS))
+    for e in OF_TEST_FLOWMOD_LATENCY:
+        CSV_OUTPUT_FLOWMOD_LATENCY.writeRow(e)
     CSV_OUTPUT_FLOWMOD_LATENCY.flush()
     CSV_OUTPUT_FLOWMOD_LATENCY.close()
     proxy[0].shutdown()
