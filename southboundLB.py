@@ -17,6 +17,12 @@ import csv
 ## sudo apt-get install mz   ##
 ###############################
 
+##################################################################################
+# TODO stampare su file vettore allocazione req rate
+##################################################################################
+##################################################################################
+##################################################################################
+##################################################################################
 
 CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
 CSV_OUTPUT_FLOWMOD_LATENCY = open('flowmod_latency.csv', 'wb')
@@ -336,7 +342,7 @@ if __name__ == "__main__":
     print "INFO    Bye!\n"
     CSV_OUTPUT_C_LATENCY.close()
     for e in OF_TEST_FLOWMOD_LATENCY:
-        CSV_OUTPUT_FLOWMOD_LATENCY.writeRow(e)
+        CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writeRow(e)
     CSV_OUTPUT_FLOWMOD_LATENCY.flush()
     CSV_OUTPUT_FLOWMOD_LATENCY.close()
     proxy[0].shutdown()
