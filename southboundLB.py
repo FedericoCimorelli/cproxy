@@ -18,15 +18,10 @@ import csv
 ###############################
 
 
-#CSV_FILE_NAME = ['output.csv', 'output2.csv', 'output3.csv']
 CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
 CSV_OUTPUT_FLOWMOD_LATENCY = open('flowmod_latency.csv', 'wb')
-#CSV_OUTPUT_FILE2 = open(CSV_FILE_NAME[1], 'wb')
-#CSV_OUTPUT_FILE3 = open(CSV_FILE_NAME[2], 'wb')
 CSV_OUTPUT_WRITER_C_LATENCY = csv.writer(CSV_OUTPUT_C_LATENCY, dialect="excel")
 CSV_OUTPUT_WRITER_FLOWMOD_LATENCY = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY, dialect="excel")
-#CSV_OUTPUT_WRITER2 = csv.writer(CSV_OUTPUT_FILE2, dialect="excel")
-#CSV_OUTPUT_WRITER3 = csv.writer(CSV_OUTPUT_FILE3, dialect="excel")
 LB_PORTS = [6634]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 3
@@ -37,7 +32,6 @@ LATENCY_MEASURES = defaultdict(list)
 OF_TEST_FLOWMOD_TS =  []
 OF_TEST_FLOWMOD_LATENCY = []
 OF_REQ_FORWARDERS = []
-#FORWARDING_SCHEME = None #Set it in main method
 
 #WARDROP...
 req_rate_tot = 3
@@ -75,7 +69,6 @@ def measureControllersLatency():
         print "ERROR    Controllers latency error"
         print e
     print "INFO    Controllers latency update " + str(lt1)+"s "+str(lt2)+"s "+str(lt3)+"s "
-    #threading.Timer(latency_loop_time, update).start()
 
 
 def update():
@@ -160,10 +153,7 @@ class OpenFlowRequestForwarder(threading.Thread):
                     ofop = ParseRequestForOFop(data, source)
                     if ofop == 14: #FLOW_MOD
                         address = ParseFlowModRequestForAddress(data)
-                        print "AAAAAAAAAAAAA " + str(address)
-                        latency = UpdateOFopLatency(address, '')
-                        #if FORWARDING_SCHEME.name == 'wardrop' and latency!=-1:
-                        #    FORWARDING_SCHEME.update(self.socket_to_odl.getpeername(), latency)
+                        UpdateOFopLatency(address, self.socket_to_odl.getpeername()[0])
                     self.client_address.write_to_source(data)
         except Exception, e:
             print "ERROR   Exception reading from forwarding socket"
@@ -272,10 +262,7 @@ def ParseRequestForOFop(request, source):
 
 def ParseFlowModRequestForAddress(request):
     request = binascii.hexlify(request)
-    #144 = dummy flowmod len of odl-openflowplugin-droptest
-    #if len(request) == 144:
     return request[112:124]
-    #return ''
 
 def ParsePacketInRequestForAddress(request):
     request = binascii.hexlify(request)
@@ -287,13 +274,9 @@ def ParsePacketInRequestForAddress(request):
 def UpdateOFopLatency(address, controller_ip): #controller_port):
     packet_in_ts = None
     pt = CONTROLLERS_IP[0]
-    #pt = LB_PORTS[0]
-    print "BBBBBBBBB address as argument" + str(address)
-    print "BBBBBBBBB OF_TEST_FLOWMOD" + str(OF_TEST_FLOWMOD_TS)
     try:
         for i in OF_TEST_FLOWMOD_TS:
             if i[0] == address:
-                print "BBBBBBBBB 11111"
                 packet_in_ts = i[2]
                 pt = i[1]
                 #del (a, ts)
@@ -301,26 +284,22 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         packet_in_ts = None
         return -1
     if packet_in_ts != None:
-        print "BBBBBBBBB pt " + str(pt)
         flow_mod_ts = time.time()
-        #del OF_TEST_FLOWMOD_TS[address]
+        #TO CHECK
+        del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow([str(lt) + " - -"])
-            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
+            OF_TEST_FLOWMOD_TS.append((str(lt), "", ""))
         if pt == CONTROLLERS_IP[1]:
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- " + str(lt) + " -"])
-            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
+            OF_TEST_FLOWMOD_TS.append(("", str(lt), ""))
         if pt == CONTROLLERS_IP[2]:
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY.writerow(["- - " + str(lt)])
-            CSV_OUTPUT_FLOWMOD_LATENCY.flush()
+            OF_TEST_FLOWMOD_TS.append(("", "", str(lt)))
         print "INFO    OFop latency update "+str(pt)+" " + str(lt)+" s"
         return lt
     return -1
 
 def ComputeOFopAvgLatency(controller_ip):
-    #print ">>>>>>>for "+str(controller_ip)+">>>>>"+format(LATENCY_MEASURES)
     if len(LATENCY_MEASURES[controller_ip])>0 :
         return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
@@ -339,9 +318,6 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 if __name__ == "__main__":
     print '\n\n\n'
-    #FORWARDING_SCHEME = StaticForwarder()
-    #FORWARDING_SCHEME = WardropForwarder()
-    #FORWARDING_SCHEME = RoundRobinForwarder()
     initWardropForwarder()
     proxy = []
     proxyThread = []
@@ -360,7 +336,7 @@ if __name__ == "__main__":
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
     CSV_OUTPUT_C_LATENCY.close()
+    CSV_OUTPUT_FLOWMOD_LATENCY.write(str(OF_TEST_FLOWMOD_TS))
+    CSV_OUTPUT_FLOWMOD_LATENCY.flush()
     CSV_OUTPUT_FLOWMOD_LATENCY.close()
-    #CSV_OUTPUT_FILE2.close()
-    #CSV_OUTPUT_FILE3.close()
     proxy[0].shutdown()
