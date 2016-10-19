@@ -285,8 +285,7 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         return -1
     if packet_in_ts != None:
         flow_mod_ts = time.time()
-        #TO CHECK
-        del OF_TEST_FLOWMOD_TS[address]
+        #del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         if pt == CONTROLLERS_IP[0]:
