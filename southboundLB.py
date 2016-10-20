@@ -26,8 +26,10 @@ import csv
 
 CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
 CSV_OUTPUT_FLOWMOD_LATENCY = open('flowmod_latency.csv', 'wb')
+CSV_OUTPUT_WARDROP = open('wardrop.csv', 'wb')
 CSV_OUTPUT_WRITER_C_LATENCY = csv.writer(CSV_OUTPUT_C_LATENCY, dialect="excel")
 CSV_OUTPUT_WRITER_FLOWMOD_LATENCY = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY, dialect="excel")
+CSV_OUTPUT_WRITER_WARDROP = csv.writer(CSV_OUTPUT_WARDROP, dialect="excel")
 LB_PORTS = [6634]
 CONTROLLERS_PORT = 6633
 CONTROLLERS_COUNT = 3
@@ -96,6 +98,9 @@ def update():
                     probs[1] = req_rate[1]/req_rate_tot
                     probs[2] = req_rate[2]/req_rate_tot
                     print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector" + format(probs)
+                    r = str(probs[0])+" "+str(probs[1])+" "+str(probs[2])+" "+str(l)+" "+str(req_rate_migr)
+                    CSV_OUTPUT_WRITER_WARDROP.writerow(r)
+                    CSV_OUTPUT_WARDROP.flush()
     measureControllersLatency()
     threading.Timer(wardrop_loop_time, update).start()
 
