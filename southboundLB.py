@@ -40,8 +40,8 @@ OF_REQ_FORWARDERS = []
 
 #WARDROP...
 req_rate_tot = 3
-req_rate = [1.5, 1, 0.5]  #tot reqs rate
-probs = [0.9, 0.06, 0.04]   #tot =1
+req_rate = [1, 1, 1]  #tot reqs rate
+probs = [0.6, 0.2, 0.2]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
 sigma = 0
@@ -295,7 +295,7 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
     pt = CONTROLLERS_IP[0]
     try:
         for i in OF_TEST_FLOWMOD_TS:
-            if i[0] == address:
+            if i[0] == address and i[1] == controller_ip:
                 packet_in_ts = i[2]
                 pt = i[1]
                 #del (a, ts)
@@ -308,19 +308,14 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
 
-        print "AAAAAAAAAAAA " + str(lt)
-        print "AAAAAAAAAAAA " + str(pt)
-        print "AAAAAAAAAAAA " + str(controller_ip)
-        print "AAAAAAAAAAAA "
-
         OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
-        if pt == CONTROLLERS_IP[0]:
+        if str(pt) == str(CONTROLLERS_IP[0]):
             CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(str(lt))
             CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
-        if pt == CONTROLLERS_IP[1]:
+        if str(pt) == str(CONTROLLERS_IP[1]):
             CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(str(lt))
             CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
-        if pt == CONTROLLERS_IP[2]:
+        if str(pt) == str(CONTROLLERS_IP[2]):
             CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(str(lt))
             CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
         return lt
