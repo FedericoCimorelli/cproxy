@@ -85,7 +85,7 @@ def update():
     for i in range(CONTROLLERS_COUNT):
         for j in range(CONTROLLERS_COUNT):
             if i!=j:    #6 case
-                l = ComputeOFopAvgLatency(i) - ComputeOFopAvgLatency(j)
+                l = ComputeOFopAvgLatency(CONTROLLERS_IP[i]) - ComputeOFopAvgLatency(CONTROLLERS_IP[j])
                 #print "INFO    Wardrop Forwarder, l"+str(CONTROLLERS_IP[i])+"-l"+str(CONTROLLERS_IP[j])+"="+str(l)
                 if(l>wardrop_threshold):
                     req_rate_migr = req_rate[i]*sigma*l
@@ -291,11 +291,6 @@ def ParsePacketInRequestForAddress(request):
 
 
 def UpdateOFopLatency(address, controller_ip): #controller_port):
-    print "1111111111111111111111111"
-    print format(OF_TEST_FLOWMOD_TS)
-    print "22222222222222222222222222"
-    print format(OF_TEST_FLOWMOD_LATENCY)
-
     packet_in_ts = None
     pt = CONTROLLERS_IP[0]
     try:
@@ -323,7 +318,6 @@ def ComputeOFopAvgLatency(controller_ip):
 
     # using the OF ops controllers latency
     if len(OF_TEST_FLOWMOD_LATENCY[controller_ip]) > 0 :
-        print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
         return round(sum(OF_TEST_FLOWMOD_LATENCY[controller_ip])/min(len(OF_TEST_FLOWMOD_LATENCY[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
 
