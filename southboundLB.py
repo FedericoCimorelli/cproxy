@@ -162,7 +162,6 @@ class OpenFlowRequestForwarder(threading.Thread):
                     source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                     ofop = ParseRequestForOFop(data, source)
                     if ofop == 14: #FLOW_MOD
-                        print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
                         address = ParseFlowModRequestForAddress(data)
                         UpdateOFopLatency(address, self.socket_to_odl.getpeername()[0])
                     self.client_address.write_to_source(data)
@@ -202,7 +201,6 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     address = ParsePacketInRequestForAddress(data)
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
-                        print "KKKKKKKKKKKKKKKKKKKKKKKKKK"
                         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
                         ts_last_req_fw[targetControllerIndex] = time.time()
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
@@ -293,27 +291,28 @@ def ParsePacketInRequestForAddress(request):
 
 
 def UpdateOFopLatency(address, controller_ip): #controller_port):
+    print "1111111111111111111111111"
+    print format(OF_TEST_FLOWMOD_TS)
+    print "22222222222222222222222222"
+    print format(OF_TEST_FLOWMOD_LATENCY)
+
     packet_in_ts = None
     pt = CONTROLLERS_IP[0]
-    print "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
     try:
         for i in OF_TEST_FLOWMOD_TS:
             if i[0] == address:
-                print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
                 packet_in_ts = i[2]
                 pt = i[1]
                 #del (a, ts)
     except Exception, e:
         packet_in_ts = None
         return -1
-    print "GGGGGGGGGGGGGGGGGGGGGGGGGG"
     if packet_in_ts != None:
         flow_mod_ts = time.time()
         #del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
-        OF_TEST_FLOWMOD_LATENCY[controller_ip] = [lt] + OF_TEST_FLOWMOD_LATENCY[controller_ip][:LATENCY_AVG_MEASURES_NUM -1]
-        print "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw"
+        OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
         return lt
     return -1
 
@@ -323,7 +322,6 @@ def ComputeOFopAvgLatency(controller_ip):
     #    return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
 
     # using the OF ops controllers latency
-    print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"
     if len(OF_TEST_FLOWMOD_LATENCY[controller_ip]) > 0 :
         print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
         return round(sum(OF_TEST_FLOWMOD_LATENCY[controller_ip])/min(len(OF_TEST_FLOWMOD_LATENCY[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
