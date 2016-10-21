@@ -208,7 +208,7 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     #In order to update OFop controllers latency
                     #It uses the same source address, check consistency...
                     for i in range(0, CONTROLLERS_COUNT):
-                        if time.time() - ts_last_req_fw[targetControllerIndex] > ts_last_req_fw_THRESHOLD:
+                        if time.time() - ts_last_req_fw[i] > ts_last_req_fw_THRESHOLD:
                             print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update AAAAAAAAAAAAAAAAAAAAAAAaa"
                             ts_last_req_fw[i] = time.time()
                             OFReqForwarders[i].write_to_dest(data, ofop)
