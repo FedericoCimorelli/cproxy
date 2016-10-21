@@ -308,6 +308,15 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
         OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
+        if pt == CONTROLLERS_IP[0]:
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(str(pt))
+            CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
+        if pt == CONTROLLERS_IP[1]:
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(str(pt))
+            CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
+        if pt == CONTROLLERS_IP[2]:
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(str(pt))
+            CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
         return lt
     return -1
 
@@ -352,17 +361,8 @@ if __name__ == "__main__":
         pass
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
-    CSV_OUTPUT_C_LATENCY.close()
-    for e in OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[0]]:
-        CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(e)
-    CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C1.close()
-    for e in OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[1]]:
-        CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(e)
-    CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C2.close()
-    for e in OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[2]]:
-        CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(e)
-    CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C3.close()
     proxy[0].shutdown()
+    CSV_OUTPUT_FLOWMOD_LATENCY_C1.close()
+    CSV_OUTPUT_FLOWMOD_LATENCY_C2.close()
+    CSV_OUTPUT_FLOWMOD_LATENCY_C3.close()
+    CSV_OUTPUT_WARDROP.close()
