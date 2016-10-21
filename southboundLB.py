@@ -162,6 +162,7 @@ class OpenFlowRequestForwarder(threading.Thread):
                     source = str(self.socket_to_odl.getpeername()[0]) + ":" + str(self.socket_to_odl.getpeername()[1])
                     ofop = ParseRequestForOFop(data, source)
                     if ofop == 14: #FLOW_MOD
+                        print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
                         address = ParseFlowModRequestForAddress(data)
                         UpdateOFopLatency(address, self.socket_to_odl.getpeername()[0])
                     self.client_address.write_to_source(data)
@@ -201,6 +202,7 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     address = ParsePacketInRequestForAddress(data)
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
+                        print "KKKKKKKKKKKKKKKKKKKKKKKKKK"
                         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
                         ts_last_req_fw[targetControllerIndex] = time.time()
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
@@ -293,15 +295,18 @@ def ParsePacketInRequestForAddress(request):
 def UpdateOFopLatency(address, controller_ip): #controller_port):
     packet_in_ts = None
     pt = CONTROLLERS_IP[0]
+    print "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
     try:
         for i in OF_TEST_FLOWMOD_TS:
             if i[0] == address:
+                print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
                 packet_in_ts = i[2]
                 pt = i[1]
                 #del (a, ts)
     except Exception, e:
         packet_in_ts = None
         return -1
+    print "GGGGGGGGGGGGGGGGGGGGGGGGGG"
     if packet_in_ts != None:
         flow_mod_ts = time.time()
         #del OF_TEST_FLOWMOD_TS[address]
