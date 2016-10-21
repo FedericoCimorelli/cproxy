@@ -97,7 +97,8 @@ def update():
                     probs[1] = req_rate[1]/req_rate_tot
                     probs[2] = req_rate[2]/req_rate_tot
                     print "INFO    Wardrop Forwarder, mapping req_rate vector to probs vector" + format(probs)
-                    r = str(probs[0])+" "+str(probs[1])+" "+str(probs[2])+" "+str(l)+" "+str(req_rate_migr)
+                    #SCRIVIRE REQ RATE NON PROBS, MIGR VALUE SOURCE DESTINATION...
+                    r = str(req_rate[0])+" "+str(req_rate[1])+" "+str(req_rate[2])+" "+str(req_rate_migr)+" "+str(CONTROLLERS_IP[i])+" "+str(CONTROLLERS_IP[j])
                     CSV_OUTPUT_WRITER_WARDROP.writerow(r)
                     CSV_OUTPUT_WARDROP.flush()
     #measureControllersLatency()
@@ -209,8 +210,9 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     #It uses the same source address, check consistency...
                     for i in range(0, CONTROLLERS_COUNT):
                         if time.time() - ts_last_req_fw[i] > ts_last_req_fw_THRESHOLD:
-                            print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update AAAAAAAAAAAAAAAAAAAAAAAaa"
+                            print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update"
                             ts_last_req_fw[i] = time.time()
+                            OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[i], time.time()))
                             OFReqForwarders[i].write_to_dest(data, ofop)
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
