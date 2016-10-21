@@ -307,7 +307,8 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         #del OF_TEST_FLOWMOD_TS[address]
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
-        OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
+        OF_TEST_FLOWMOD_LATENCY[controller_ip] = [lt] + OF_TEST_FLOWMOD_LATENCY[controller_ip][:LATENCY_AVG_MEASURES_NUM -1]
+        print "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWw"
         return lt
     return -1
 
@@ -317,7 +318,9 @@ def ComputeOFopAvgLatency(controller_ip):
     #    return round(sum(LATENCY_MEASURES[controller_ip])/min(len(LATENCY_MEASURES[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
 
     # using the OF ops controllers latency
+    print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa"
     if len(OF_TEST_FLOWMOD_LATENCY[controller_ip]) > 0 :
+        print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
         return round(sum(OF_TEST_FLOWMOD_LATENCY[controller_ip])/min(len(OF_TEST_FLOWMOD_LATENCY[controller_ip]), LATENCY_AVG_MEASURES_NUM),5)
     return 0
 
