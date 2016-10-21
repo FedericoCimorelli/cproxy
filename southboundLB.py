@@ -17,13 +17,6 @@ import csv
 ## sudo apt-get install mz   ##
 ###############################
 
-##################################################################################
-# TODO stampare su file vettore allocazione req rate
-##################################################################################
-##################################################################################
-##################################################################################
-##################################################################################
-
 CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
 CSV_OUTPUT_FLOWMOD_LATENCY = open('flowmod_latency.csv', 'wb')
 CSV_OUTPUT_WARDROP = open('wardrop.csv', 'wb')
@@ -50,6 +43,8 @@ mu = 0.5
 sigma = 0
 latency_loop_time = 1 #1 sec
 wardrop_loop_time = 1 #1 sec
+ts_last_req_fw = [0, 0, 0]
+ts_last_req_fw_THRESHOLD = 1 #sec
 
 
 def initWardropForwarder():
@@ -101,7 +96,7 @@ def update():
                     r = str(probs[0])+" "+str(probs[1])+" "+str(probs[2])+" "+str(l)+" "+str(req_rate_migr)
                     CSV_OUTPUT_WRITER_WARDROP.writerow(r)
                     CSV_OUTPUT_WARDROP.flush()
-    measureControllersLatency()
+    #measureControllersLatency()
     threading.Timer(wardrop_loop_time, update).start()
 
 
@@ -203,7 +198,16 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
                         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
+                        ts_last_req_fw[targetControllerIndex] = time.time()
                         OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
+                    ############################################
+                    #In order to update OFop controllers latency
+                    #It uses the same source address, check consistency...
+                    for i in range(0, CONTROLLERS_COUNT):
+                        if time.time() - ts_last_req_fw[targetControllerIndex] > ts_last_req_fw_THRESHOLD:
+                            print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update AAAAAAAAAAAAAAAAAAAAAAAaa"
+                            ts_last_req_fw[i] = time.time()
+                            OFReqForwarders[i].write_to_dest(data, ofop)
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
