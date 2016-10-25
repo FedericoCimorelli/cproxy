@@ -319,6 +319,7 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = round(lt, 5)
 
         OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP] = [lt] + OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP][:LATENCY_AVG_MEASURES_NUM -1]
+        print " OF_TEST_FLOWMOD_LATENCY lenght: " + str(len(OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP]))
         CSV_OUTPUT_WRITER_C_LATENCY.writerow(str(lt))
         CSV_OUTPUT_C_LATENCY.flush()
 
@@ -376,7 +377,7 @@ if __name__ == "__main__":
     print "\nINFO    Shutdown, wait..."
     print "INFO    Bye!\n"
     proxy[0].shutdown()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C1.close()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C2.close()
-    CSV_OUTPUT_FLOWMOD_LATENCY_C3.close()
+    # CSV_OUTPUT_FLOWMOD_LATENCY_C1.close()
+    # CSV_OUTPUT_FLOWMOD_LATENCY_C2.close()
+    # CSV_OUTPUT_FLOWMOD_LATENCY_C3.close()
     CSV_OUTPUT_WARDROP.close()
