@@ -318,7 +318,8 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
 
-        OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP] = [lt] + OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP][:LATENCY_AVG_MEASURES_NUM -1]
+        #OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP] = [lt] + OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP][:LATENCY_AVG_MEASURES_NUM -1]
+        OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP] = [lt] + OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP]
         print " OF_TEST_FLOWMOD_LATENCY lenght: " + str(len(OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP]))
         CSV_OUTPUT_WRITER_C_LATENCY.writerow(str(lt))
         CSV_OUTPUT_C_LATENCY.flush()
