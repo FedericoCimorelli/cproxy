@@ -19,12 +19,12 @@ import csv
 
 CSV_OUTPUT_C_LATENCY = open('controllers_latency.csv', 'wb')
 CSV_OUTPUT_WRITER_C_LATENCY = csv.writer(CSV_OUTPUT_C_LATENCY, dialect="excel")
-CSV_OUTPUT_FLOWMOD_LATENCY_C1 = open('flowmod_latency_C1.csv', 'wb')
-CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C1, dialect="excel")
-CSV_OUTPUT_FLOWMOD_LATENCY_C2 = open('flowmod_latency_C2.csv', 'wb')
-CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C2, dialect="excel")
-CSV_OUTPUT_FLOWMOD_LATENCY_C3 = open('flowmod_latency_C3.csv', 'wb')
-CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C3, dialect="excel")
+# CSV_OUTPUT_FLOWMOD_LATENCY_C1 = open('flowmod_latency_C1.csv', 'wb')
+# CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C1, dialect="excel")
+# CSV_OUTPUT_FLOWMOD_LATENCY_C2 = open('flowmod_latency_C2.csv', 'wb')
+# CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C2, dialect="excel")
+# CSV_OUTPUT_FLOWMOD_LATENCY_C3 = open('flowmod_latency_C3.csv', 'wb')
+# CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3 = csv.writer(CSV_OUTPUT_FLOWMOD_LATENCY_C3, dialect="excel")
 CSV_OUTPUT_WARDROP = open('wardrop.csv', 'wb')
 CSV_OUTPUT_WRITER_WARDROP = csv.writer(CSV_OUTPUT_WARDROP, dialect="excel")
 LB_PORTS = [6634]
@@ -304,12 +304,10 @@ def ParsePacketInRequestForAddress(request):
 
 def UpdateOFopLatency(address, controller_ip): #controller_port):
     packet_in_ts = None
-    pt = CONTROLLERS_IP[0]
     try:
         for i in OF_TEST_FLOWMOD_TS:
-            if i[0] == address and i[1] == controller_ip:
+            if i[0] == address:
                 packet_in_ts = i[2]
-                pt = i[1]
                 #del (a, ts)
     except Exception, e:
         packet_in_ts = None
@@ -320,16 +318,19 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
 
-        OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
-        if str(pt) == str(CONTROLLERS_IP[0]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(str(lt))
-            CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
-        if str(pt) == str(CONTROLLERS_IP[1]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(str(lt))
-            CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
-        if str(pt) == str(CONTROLLERS_IP[2]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(str(lt))
-            CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
+        OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP] = [lt] + OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP][:LATENCY_AVG_MEASURES_NUM -1]
+        CSV_OUTPUT_WRITER_C_LATENCY.writerow(str(lt))
+        CSV_OUTPUT_C_LATENCY.flush()
+
+        # if str(pt) == str(CONTROLLERS_IP[0]):
+        #     CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(str(lt))
+        #     CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
+        # if str(pt) == str(CONTROLLERS_IP[1]):
+        #     CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(str(lt))
+        #     CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
+        # if str(pt) == str(CONTROLLERS_IP[2]):
+        #     CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(str(lt))
+        #     CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
         return lt
     return -1
 
