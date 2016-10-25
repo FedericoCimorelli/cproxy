@@ -17,8 +17,6 @@ NUM_SWITCHES = 2
 NUM_HOST_PER_SWITCH = 2 #at least 2!!
 PACKETS_GEN_DURATION = 1000 #secs
 INITIAL_PACKET_DELAY = 1 #secs
-PACKET_DELAY = INITIAL_PACKET_DELAY
-PACKET_DELAY_DIFF = 0.001
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -105,6 +103,8 @@ def generate_mac_address_pairs(current_mac):
 
 
 def generate_traffic(net):
+    PACKET_DELAY = 1  # secs
+    PACKET_DELAY_DIFF = 0.001
     #interpacket_delay_ms = 1000 #1sec
     #traffic_transmission_delay = interpacket_delay_ms / 1000
     transmission_start = time.time()
