@@ -16,7 +16,7 @@ CONTROLLERS_PORTS = [6634, 6635, 6636]
 NUM_SWITCHES = 2
 NUM_HOST_PER_SWITCH = 2 #at least 2!!
 PACKETS_GEN_DURATION = 1000 #secs
-INITIAL_PACKET_DELAY = 1 #secs
+INITIAL_PACKET_DELAY = 0.5 #secs
 
 
 class MultiSwitch( OVSKernelSwitch ):
@@ -103,7 +103,7 @@ def generate_mac_address_pairs(current_mac):
 
 
 def generate_traffic(net):
-    PACKET_DELAY = 1  # secs
+    PACKET_DELAY = 0.5  # secs
     PACKET_DELAY_DIFF = 0.001
     #interpacket_delay_ms = 1000 #1sec
     #traffic_transmission_delay = interpacket_delay_ms / 1000
@@ -129,8 +129,8 @@ def generate_traffic(net):
             print "Packet delay: " + str(PACKET_DELAY)
         #time.sleep(traffic_transmission_delay)
         print 'Waiting for hosts output'
-        for host in net.hosts:
-            host.waitOutput()
+        #for host in net.hosts:
+        #    host.waitOutput()
         if int(current_mac, 16) >= int(last_mac, 16):
             current_mac = hex(int(last_mac, 16) - 0x0000ffffffff + 0x000000000001)
             # The minimum controller hard_timeout is 1 second.
