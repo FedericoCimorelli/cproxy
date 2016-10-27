@@ -39,8 +39,8 @@ OF_TEST_FLOWMOD_LATENCY = defaultdict(list)
 OF_REQ_FORWARDERS = []
 
 #WARDROP...
-req_rate_tot = 3
-req_rate = [1, 1, 1]  #tot reqs rate
+req_rate_tot = 5
+req_rate = [1.666, 1.666, 1.666]  #tot reqs rate
 probs = [0.6, 0.2, 0.2]   #tot =1
 wardrop_threshold = 0.05
 mu = 0.5
@@ -198,35 +198,26 @@ class OFSouthboundRequestHandler(SocketServer.StreamRequestHandler):
                     raise Exception("endpoint closed")
                 if len(data) != 0:
                     ofop = ParseRequestForOFop(data, str(MININET_IP) + ':' + str(self.server.serverListeningPort))
-
-
-
                 if ofop == 10: #on PACKET_IN
                     address = ParsePacketInRequestForAddress(data)
                     targetControllerIndex = getControllerDestIndex()
                     if address != '':
-                        #OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
-                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[0], time.time()))
-                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[1], time.time()))
-                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[2], time.time()))
-                        #ts_last_req_fw[targetControllerIndex] = time.time()
-                        #OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
-                        OFReqForwarders[0].write_to_dest(data, ofop)
-                        OFReqForwarders[1].write_to_dest(data, ofop)
-                        #OFReqForwarders[2].write_to_dest(data, ofop)
+                        OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[targetControllerIndex], time.time()))
+                        ts_last_req_fw[targetControllerIndex] = time.time()
+                        OFReqForwarders[targetControllerIndex].write_to_dest(data, ofop)
                     ############################################
                     #In order to update OFop controllers latency
                     #It uses the same source address, check consistency...
-                    # for i in range(0, CONTROLLERS_COUNT):
-                    #     if time.time() - ts_last_req_fw[i] > ts_last_req_fw_THRESHOLD:
-                    #         print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update"
-                    #         ts_last_req_fw[i] = time.time()
-                    #         OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[i], time.time()))
-                    #         OFReqForwarders[i].write_to_dest(data, ofop)
+                    for i in range(0, CONTROLLERS_COUNT):
+                        if time.time() - ts_last_req_fw[i] > ts_last_req_fw_THRESHOLD:
+                            print "INFO    Forwarding also to "+str(CONTROLLERS_IP[i])+" to force latency update"
+                            ts_last_req_fw[i] = time.time()
+                            OF_TEST_FLOWMOD_TS.append((address, CONTROLLERS_IP[i], time.time()))
+                            OFReqForwarders[i].write_to_dest(data, ofop)
                 else:
                     OFReqForwarders[0].write_to_dest(data, ofop)
                     OFReqForwarders[1].write_to_dest(data, ofop)
-                    #OFReqForwarders[2].write_to_dest(data, ofop)
+                    OFReqForwarders[2].write_to_dest(data, ofop)
 
         except Exception, e:
             print "ERROR   Exception reading from main socket"
@@ -319,17 +310,16 @@ def UpdateOFopLatency(address, controller_ip): #controller_port):
         lt = flow_mod_ts - packet_in_ts
         lt = round(lt, 5)
 
-        OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt]
+        OF_TEST_FLOWMOD_LATENCY[pt] = [lt] + OF_TEST_FLOWMOD_LATENCY[pt][:LATENCY_AVG_MEASURES_NUM -1]
         if str(pt) == str(CONTROLLERS_IP[0]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow(str(lt))
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C1.writerow([str(lt), time.time()])
             CSV_OUTPUT_FLOWMOD_LATENCY_C1.flush()
         if str(pt) == str(CONTROLLERS_IP[1]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow(str(lt))
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C2.writerow([str(lt), time.time()])
             CSV_OUTPUT_FLOWMOD_LATENCY_C2.flush()
         if str(pt) == str(CONTROLLERS_IP[2]):
-            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow(str(lt))
+            CSV_OUTPUT_WRITER_FLOWMOD_LATENCY_C3.writerow([str(lt), time.time()])
             CSV_OUTPUT_FLOWMOD_LATENCY_C3.flush()
-        print str(len(OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[0]]))+' '+str(len(OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[1]]))+' '+str(len(OF_TEST_FLOWMOD_LATENCY[CONTROLLERS_IP[2]]))
         return lt
     return -1
 
@@ -357,7 +347,7 @@ class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
 
 if __name__ == "__main__":
     print '\n\n\n'
-    #initWardropForwarder()
+    initWardropForwarder()
     proxy = []
     proxyThread = []
     print 'INFO    Setting up proxy socket server on 127.0.0.1:' + str(LB_PORTS[0])
